@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -43,21 +44,48 @@ func (h *Hub) Run() {
 			h.clients[client] = true
 			h.mu.Unlock()
 
-			// MOCK: Send a puzzle immediately upon connection
+			// MOCK: Send a random puzzle immediately upon connection
 			go func(c *Client) {
 				time.Sleep(500 * time.Millisecond) // Wait a bit
+
+				puzzles := []map[string]interface{}{
+					{
+						"encrypted_text": "WKH TXLFN EURZQ IRA MXPSV RYHU WKH ODCB GRJ",
+						"solution":       "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+						"cipher_type":    "CAESAR",
+						"difficulty":     1,
+					},
+					{
+						"encrypted_text": "LIPPS ASVPH",
+						"solution":       "HELLO WORLD",
+						"cipher_type":    "CAESAR",
+						"difficulty":     1,
+					},
+					{
+						"encrypted_text": "D OLWWOH ELW KDUGHU",
+						"solution":       "A LITTLE BIT HARDER",
+						"cipher_type":    "CAESAR",
+						"difficulty":     2,
+					},
+					{
+						"encrypted_text": "LXFOPVEFRNHR",
+						"solution":       "CRYPTOGRAPHY",
+						"cipher_type":    "VIGENERE",
+						"difficulty":     3,
+					},
+				}
+
+				// Simple random selection (using time as seed is not strictly necessary for this mock but good practice)
+				randomIndex := rand.Intn(len(puzzles))
+				selectedPuzzle := puzzles[randomIndex]
+
 				mockPuzzle := map[string]interface{}{
 					"type": "MATCH_STARTED",
 					"payload": map[string]interface{}{
 						"match_id":          "mock-match-123",
 						"opponent_id":       "bot-1",
 						"opponent_username": "NEMESIS_X",
-						"puzzle": map[string]interface{}{
-							"encrypted_text": "WKH TXLFN EURZQ IRA MXPSV RYHU WKH ODCB GRJ", // Caesar +3
-							"cipher_type":    "CAESAR",
-							"difficulty":     1,
-							"length":         43,
-						},
+						"puzzle":            selectedPuzzle,
 					},
 				}
 				msg, _ := json.Marshal(mockPuzzle)
@@ -112,16 +140,10 @@ func (c *Client) writePump() {
 	defer func() {
 		c.conn.Close()
 	}()
-	for {
-		select {
-		case message, ok := <-c.send:
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-			c.conn.WriteMessage(websocket.TextMessage, message)
-		}
+	for message := range c.send {
+		c.conn.WriteMessage(websocket.TextMessage, message)
 	}
+	c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 }
 
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {

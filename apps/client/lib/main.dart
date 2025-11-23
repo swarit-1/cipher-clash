@@ -14,7 +14,7 @@ class CipherClashApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cipher Clash',
-      theme: TerminalTheme.darkTheme,
+      theme: TerminalTheme.theme,
       home: const WorkbenchScreen(),
       debugShowCheckedModeBanner: false,
     );

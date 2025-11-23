@@ -88,11 +88,13 @@ class GameService {
 
 class PuzzleState {
   final String encryptedText;
+  final String solution;
   final String cipherType;
   final int difficulty;
 
   PuzzleState({
     required this.encryptedText,
+    required this.solution,
     required this.cipherType,
     required this.difficulty,
   });
@@ -100,6 +102,7 @@ class PuzzleState {
   factory PuzzleState.fromJson(Map<String, dynamic> json) {
     return PuzzleState(
       encryptedText: json['encrypted_text'] ?? '',
+      solution: json['solution'] ?? '',
       cipherType: json['cipher_type'] ?? 'UNKNOWN',
       difficulty: json['difficulty'] ?? 1,
     );
