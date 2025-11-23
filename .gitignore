@@ -1,0 +1,33 @@
+# Go
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+vendor/
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+android/.gradle
+.pub-cache/
+.pub/
+
+# General
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
