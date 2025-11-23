@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package game;
+
+option go_package = "github.com/swarit-1/cipher-clash/pkg/pb";
+
+service GameService {
+  // Matchmaking
+  rpc JoinQueue (JoinQueueRequest) returns (JoinQueueResponse);
+  
+  // Gameplay Stream
+  rpc StreamGameEvents (stream GameAction) returns (stream GameEvent);
+}
+
+message JoinQueueRequest {
+  string player_id = 1;
+  int32 current_rating = 2;
+}
+
+message JoinQueueResponse {
+  string ticket_id = 1;
+  string status = 2; // "QUEUED", "MATCH_FOUND"
+}
+
+message GameAction {
+  string match_id = 1;
+  string player_id = 2;
+  oneof action {
+    string keystroke = 3; // For real-time visualization
+    string submit_guess = 4;
+    string surrender = 5;
+  }
+}
+
+message GameEvent {
+  oneof event {
+    MatchStarted match_started = 1;
+    OpponentProgress opponent_progress = 2;
+    GameResult game_result = 3;
+    PuzzleState puzzle_state = 4;
+  }
+}
+
+message MatchStarted {
+  string match_id = 1;
+  string opponent_id = 2;
+  string opponent_username = 3;
+  PuzzleState puzzle = 4;
+}
+
+message PuzzleState {
+  string encrypted_text = 1;
+  string cipher_type = 2;
+  int32 difficulty = 3;
+}
+
+message OpponentProgress {
+  float progress_percentage = 1;
+}
+
+message GameResult {
+  string winner_id = 1;
+  int32 rating_change = 2;
+}
