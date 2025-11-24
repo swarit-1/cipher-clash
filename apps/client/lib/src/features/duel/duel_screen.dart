@@ -131,7 +131,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                     Expanded(child: _buildPuzzleView(puzzleState)),
                     Container(
                         width: 1,
-                        color: TerminalTheme.secondary.withOpacity(0.3)),
+                        color: TerminalTheme.secondary.withValues(alpha: 0.3)),
                     Expanded(child: _buildWorkspace()),
                   ],
                 ),
@@ -140,7 +140,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
           ),
           if (_isSuccess)
             Container(
-              color: Colors.green.withOpacity(0.2),
+              color: Colors.green.withValues(alpha: 0.2),
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.all(20),
@@ -164,14 +164,14 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
             IgnorePointer(
               child: Container(
                 decoration: BoxDecoration(
-                  border:
-                      Border.all(color: Colors.red.withOpacity(0.5), width: 4),
+                  border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.5), width: 4),
                 ),
               ),
             ),
           if (_isGameOver)
             Container(
-              color: Colors.red.withOpacity(0.9),
+              color: Colors.red.withValues(alpha: 0.9),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -225,8 +225,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         border: Border(
-            bottom:
-                BorderSide(color: TerminalTheme.secondary.withOpacity(0.3))),
+            bottom: BorderSide(
+                color: TerminalTheme.secondary.withValues(alpha: 0.3))),
       ),
       child: Row(
         children: [
@@ -236,7 +236,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
             width: 200,
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: TerminalTheme.secondary.withOpacity(0.1),
+              backgroundColor: TerminalTheme.secondary.withValues(alpha: 0.1),
               valueColor:
                   const AlwaysStoppedAnimation<Color>(TerminalTheme.error),
             ),
@@ -260,8 +260,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.black26,
-                border:
-                    Border.all(color: TerminalTheme.secondary.withOpacity(0.3)),
+                border: Border.all(
+                    color: TerminalTheme.secondary.withValues(alpha: 0.3)),
               ),
               child: Text(
                 state?.encryptedText ?? 'WAITING_FOR_STREAM...',

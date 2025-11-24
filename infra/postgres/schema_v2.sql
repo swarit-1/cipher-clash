@@ -5,9 +5,7 @@
 -- progression, achievements, and analytics for a competitive esports platform
 -- ============================================================================
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- Extensions are built-in for Postgres 15 (gen_random_uuid)
 
 -- ============================================================================
 -- USERS & AUTHENTICATION
@@ -576,7 +574,7 @@ SELECT
     u.total_games,
     u.wins,
     u.losses,
-    CASE WHEN u.total_games > 0 THEN ROUND((u.wins::FLOAT / u.total_games::FLOAT) * 100, 2) ELSE 0 END as win_rate,
+    CASE WHEN u.total_games > 0 THEN ROUND(((u.wins::FLOAT / u.total_games::FLOAT) * 100)::numeric, 2) ELSE 0 END as win_rate,
     u.win_streak,
     u.best_win_streak,
     ROW_NUMBER() OVER (ORDER BY u.elo_rating DESC) as rank

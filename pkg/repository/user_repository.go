@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,31 +12,31 @@ import (
 
 // User represents a user model
 type User struct {
-	ID              uuid.UUID  `json:"id"`
-	Username        string     `json:"username"`
-	Email           string     `json:"email"`
-	PasswordHash    string     `json:"-"` // Never expose password hash
+	ID              uuid.UUID      `json:"id"`
+	Username        string         `json:"username"`
+	Email           string         `json:"email"`
+	PasswordHash    string         `json:"-"` // Never expose password hash
 	DisplayName     sql.NullString `json:"display_name"`
 	AvatarURL       sql.NullString `json:"avatar_url"`
 	Title           sql.NullString `json:"title"`
-	Region          string     `json:"region"`
-	Level           int        `json:"level"`
-	XP              int64      `json:"xp"`
-	TotalGames      int        `json:"total_games"`
-	Wins            int        `json:"wins"`
-	Losses          int        `json:"losses"`
-	WinStreak       int        `json:"win_streak"`
-	BestWinStreak   int        `json:"best_win_streak"`
-	EloRating       int        `json:"elo_rating"`
-	RatingDeviation float64    `json:"rating_deviation"`
-	Volatility      float64    `json:"volatility"`
-	RankTier        string     `json:"rank_tier"`
-	PuzzlesSolved   int        `json:"puzzles_solved"`
-	FastestSolveMS  sql.NullInt32 `json:"fastest_solve_ms"`
-	IsVerified      bool       `json:"is_verified"`
-	IsBanned        bool       `json:"is_banned"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	Region          string         `json:"region"`
+	Level           int            `json:"level"`
+	XP              int64          `json:"xp"`
+	TotalGames      int            `json:"total_games"`
+	Wins            int            `json:"wins"`
+	Losses          int            `json:"losses"`
+	WinStreak       int            `json:"win_streak"`
+	BestWinStreak   int            `json:"best_win_streak"`
+	EloRating       int            `json:"elo_rating"`
+	RatingDeviation float64        `json:"rating_deviation"`
+	Volatility      float64        `json:"volatility"`
+	RankTier        string         `json:"rank_tier"`
+	PuzzlesSolved   int            `json:"puzzles_solved"`
+	FastestSolveMS  sql.NullInt32  `json:"fastest_solve_ms"`
+	IsVerified      bool           `json:"is_verified"`
+	IsBanned        bool           `json:"is_banned"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 // UserRepository handles user database operations

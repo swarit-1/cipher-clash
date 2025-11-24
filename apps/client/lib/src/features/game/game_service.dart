@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -35,16 +36,16 @@ class GameService {
           _handleMessage(message);
         },
         onError: (error) {
-          print('WebSocket Error: $error');
+          debugPrint('WebSocket Error: $error');
           disconnect();
         },
         onDone: () {
-          print('WebSocket Closed');
+          debugPrint('WebSocket Closed');
           disconnect();
         },
       );
     } catch (e) {
-      print('Connection Error: $e');
+      debugPrint('Connection Error: $e');
     }
   }
 
@@ -71,7 +72,7 @@ class GameService {
       final type = data['type'];
       final payload = data['payload'];
 
-      print('Received: $type');
+      debugPrint('Received: $type');
 
       if (type == 'MATCH_STARTED') {
         // Parse nested puzzle state
@@ -81,7 +82,7 @@ class GameService {
         }
       }
     } catch (e) {
-      print('Error parsing message: $e');
+      debugPrint('Error parsing message: $e');
     }
   }
 }

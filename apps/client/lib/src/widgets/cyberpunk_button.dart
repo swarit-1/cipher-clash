@@ -136,8 +136,8 @@ class _CyberpunkButtonState extends State<CyberpunkButton>
               boxShadow: widget.onPressed != null && !widget.isLoading
                   ? _glowEffect
                       .map((shadow) => BoxShadow(
-                            color: shadow.color.withOpacity(
-                              shadow.color.opacity * _glowAnimation.value,
+                            color: shadow.color.withValues(
+                              alpha: shadow.color.a * _glowAnimation.value,
                             ),
                             blurRadius: shadow.blurRadius,
                             spreadRadius: shadow.spreadRadius,

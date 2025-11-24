@@ -40,9 +40,9 @@ class WorkbenchScreen extends ConsumerWidget {
         border: Border.all(color: TerminalTheme.primary),
         color: TerminalTheme.background,
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text('OPERATOR: GHOST_1'),
           Text('STATUS: ONLINE'),
           Text('RATING: 1200 [UNRANKED]'),
@@ -68,7 +68,8 @@ class WorkbenchScreen extends ConsumerWidget {
   Widget _buildToolCard(String title, IconData icon) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: TerminalTheme.secondary.withOpacity(0.5)),
+        border:
+            Border.all(color: TerminalTheme.secondary.withValues(alpha: 0.5)),
         color: TerminalTheme.background,
       ),
       child: Column(
@@ -93,7 +94,7 @@ class WorkbenchScreen extends ConsumerWidget {
           );
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: TerminalTheme.primary.withOpacity(0.1),
+          backgroundColor: TerminalTheme.primary.withValues(alpha: 0.1),
         ),
         child: const Text('INITIATE_DUEL_SEQUENCE()'),
       ),

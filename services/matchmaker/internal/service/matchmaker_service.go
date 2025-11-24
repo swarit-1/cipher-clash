@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -17,11 +16,11 @@ import (
 
 // MatchmakerService handles matchmaking operations
 type MatchmakerService struct {
-	db       *db.DB
-	cache    *cache.Cache
-	queue    *queue.MatchmakingQueue
+	db        *db.DB
+	cache     *cache.Cache
+	queue     *queue.MatchmakingQueue
 	publisher *messaging.Publisher
-	log      *logger.Logger
+	log       *logger.Logger
 }
 
 // NewMatchmakerService creates a new matchmaker service
@@ -33,11 +32,11 @@ func NewMatchmakerService(
 	log *logger.Logger,
 ) *MatchmakerService {
 	ms := &MatchmakerService{
-		db:       database,
-		cache:    cacheClient,
-		queue:    queueSystem,
+		db:        database,
+		cache:     cacheClient,
+		queue:     queueSystem,
 		publisher: pub,
-		log:      log,
+		log:       log,
 	}
 
 	// Start listening for matches
@@ -57,10 +56,10 @@ type JoinQueueRequest struct {
 
 // JoinQueueResponse represents queue join result
 type JoinQueueResponse struct {
-	QueueID                string `json:"queue_id"`
-	EstimatedWaitSeconds   int    `json:"estimated_wait_time_seconds"`
-	PlayersInQueue         int    `json:"players_in_queue"`
-	Position               int    `json:"position"`
+	QueueID              string `json:"queue_id"`
+	EstimatedWaitSeconds int    `json:"estimated_wait_time_seconds"`
+	PlayersInQueue       int    `json:"players_in_queue"`
+	Position             int    `json:"position"`
 }
 
 // LeaderboardEntry represents a leaderboard entry
@@ -162,11 +161,11 @@ func (ms *MatchmakerService) GetQueueStatus(ctx context.Context, userID string) 
 	waitSeconds := int(entry.QueuedAt.Unix())
 
 	return map[string]interface{}{
-		"in_queue":         true,
+		"in_queue":          true,
 		"wait_time_seconds": waitSeconds,
-		"players_in_queue": playersInQueue,
-		"game_mode":        entry.GameMode,
-		"search_range":     entry.SearchRange,
+		"players_in_queue":  playersInQueue,
+		"game_mode":         entry.GameMode,
+		"search_range":      entry.SearchRange,
 	}, nil
 }
 

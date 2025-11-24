@@ -56,7 +56,7 @@ class GlowCard extends StatelessWidget {
       case GlowCardVariant.success:
         return AppTheme.electricGreen;
       default:
-        return AppTheme.cyberBlue.withOpacity(0.1);
+        return AppTheme.cyberBlue.withValues(alpha: 0.1);
     }
   }
 

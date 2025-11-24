@@ -15,7 +15,7 @@ class TerminalTheme {
   // Glow Effects
   static List<BoxShadow> get glowPrimary => [
         BoxShadow(
-          color: primary.withOpacity(0.6),
+          color: primary.withValues(alpha: 0.6),
           blurRadius: 8,
           spreadRadius: 1,
         ),
@@ -23,7 +23,7 @@ class TerminalTheme {
 
   static List<BoxShadow> get glowError => [
         BoxShadow(
-          color: error.withOpacity(0.6),
+          color: error.withValues(alpha: 0.6),
           blurRadius: 10,
           spreadRadius: 2,
         ),
@@ -37,7 +37,6 @@ class TerminalTheme {
           primary: primary,
           secondary: secondary,
           surface: surface,
-          background: background,
           error: error,
         ),
         textTheme: const TextTheme(
@@ -56,14 +55,14 @@ class TerminalTheme {
             borderRadius: BorderRadius.circular(4),
           ),
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: primary.withOpacity(0.5)),
+            borderSide: BorderSide(color: primary.withValues(alpha: 0.5)),
             borderRadius: BorderRadius.circular(4),
           ),
           focusedBorder: OutlineInputBorder(
             borderSide: const BorderSide(color: primary, width: 2),
             borderRadius: BorderRadius.circular(4),
           ),
-          hintStyle: TextStyle(color: textSecondary.withOpacity(0.5)),
+          hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
