@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package matchmaking;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/matchmaking";
+
+// Matchmaking Service - Handles player queue and matching
+service MatchmakingService {
+  // Join matchmaking queue
+  rpc JoinQueue(JoinQueueRequest) returns (JoinQueueResponse);
+
+  // Leave matchmaking queue
+  rpc LeaveQueue(LeaveQueueRequest) returns (LeaveQueueResponse);
+
+  // Check queue status
+  rpc GetQueueStatus(GetQueueStatusRequest) returns (GetQueueStatusResponse);
+
+  // Create match (internal use)
+  rpc CreateMatch(CreateMatchRequest) returns (CreateMatchResponse);
+
+  // Update ELO ratings after match
+  rpc UpdateRatings(UpdateRatingsRequest) returns (UpdateRatingsResponse);
+
+  // Get leaderboard
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardResponse);
+}
+
+// Messages
+message JoinQueueRequest {
+  string user_id = 1;
+  string game_mode = 2; // RANKED_1V1, QUICK_MATCH, etc.
+  int32 current_elo = 3;
+  string region = 4;
+}
+
+message JoinQueueResponse {
+  string queue_id = 1;
+  int32 estimated_wait_time_seconds = 2;
+  int32 players_in_queue = 3;
+}
+
+message LeaveQueueRequest {
+  string user_id = 1;
+  string queue_id = 2;
+}
+
+message LeaveQueueResponse {
+  bool success = 1;
+}
+
+message GetQueueStatusRequest {
+  string user_id = 1;
+}
+
+message GetQueueStatusResponse {
+  bool in_queue = 1;
+  int32 wait_time_seconds = 2;
+  int32 players_in_queue = 3;
+  string game_mode = 4;
+}
+
+message CreateMatchRequest {
+  repeated string player_ids = 1;
+  string game_mode = 2;
+  int32 season_id = 3;
+}
+
+message CreateMatchResponse {
+  string match_id = 1;
+  repeated string player_ids = 2;
+  string game_server_url = 3; // WebSocket URL for game service
+}
+
+message UpdateRatingsRequest {
+  string match_id = 1;
+  string winner_id = 2;
+  repeated PlayerRating players = 3;
+}
+
+message UpdateRatingsResponse {
+  repeated PlayerRatingUpdate updates = 1;
+}
+
+message GetLeaderboardRequest {
+  string region = 1; // Empty for global
+  int32 season_id = 2; // 0 for current season
+  int32 limit = 3; // Max 100
+  int32 offset = 4;
+}
+
+message GetLeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
+  int32 total_count = 2;
+}
+
+// Models
+message PlayerRating {
+  string user_id = 1;
+  int32 current_elo = 2;
+  float rating_deviation = 3;
+  float volatility = 4;
+}
+
+message PlayerRatingUpdate {
+  string user_id = 1;
+  int32 old_elo = 2;
+  int32 new_elo = 3;
+  int32 elo_change = 4;
+  string old_rank_tier = 5;
+  string new_rank_tier = 6;
+}
+
+message LeaderboardEntry {
+  int32 rank = 1;
+  string user_id = 2;
+  string username = 3;
+  string display_name = 4;
+  string avatar_url = 5;
+  int32 elo_rating = 6;
+  string rank_tier = 7;
+  int32 total_games = 8;
+  int32 wins = 9;
+  int32 losses = 10;
+  float win_rate = 11;
+  int32 win_streak = 12;
+}

@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/auth";
+
+// Auth Service - Handles authentication and user management
+service AuthService {
+  // User Registration
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // User Login
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Refresh Access Token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+
+  // Logout (revoke refresh token)
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // Validate Token
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Get User Profile
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // Update User Profile
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+}
+
+// Messages
+message RegisterRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string region = 4; // Optional: US, EU, ASIA
+}
+
+message RegisterResponse {
+  string user_id = 1;
+  string username = 2;
+  string access_token = 3;
+  string refresh_token = 4;
+  int64 expires_in = 5; // seconds
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string user_id = 1;
+  string username = 2;
+  string access_token = 3;
+  string refresh_token = 4;
+  int64 expires_in = 5;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_in = 3;
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2;
+  string username = 3;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message UpdateUserRequest {
+  string user_id = 1;
+  optional string display_name = 2;
+  optional string avatar_url = 3;
+  optional string region = 4;
+}
+
+message UpdateUserResponse {
+  User user = 1;
+}
+
+// User Model
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string display_name = 4;
+  string avatar_url = 5;
+  string title = 6;
+  string region = 7;
+  int32 level = 8;
+  int64 xp = 9;
+  int32 elo_rating = 10;
+  string rank_tier = 11;
+  int32 total_games = 12;
+  int32 wins = 13;
+  int32 losses = 14;
+  int32 win_streak = 15;
+  int64 created_at = 16; // Unix timestamp
+}

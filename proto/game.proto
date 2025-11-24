@@ -2,63 +2,165 @@ syntax = "proto3";
 
 package game;
 
-option go_package = "github.com/swarit-1/cipher-clash/pkg/pb";
+option go_package = "github.com/swarit-1/cipher-clash/proto/game";
 
+// Game Service - Handles real-time gameplay
 service GameService {
-  // Matchmaking
-  rpc JoinQueue (JoinQueueRequest) returns (JoinQueueResponse);
-  
-  // Gameplay Stream
-  rpc StreamGameEvents (stream GameAction) returns (stream GameEvent);
+  // Start a new game session
+  rpc StartGame(StartGameRequest) returns (StartGameResponse);
+
+  // Submit a puzzle solution
+  rpc SubmitSolution(SubmitSolutionRequest) returns (SubmitSolutionResponse);
+
+  // Use a power-up
+  rpc UsePowerUp(UsePowerUpRequest) returns (UsePowerUpResponse);
+
+  // Surrender/forfeit match
+  rpc Surrender(SurrenderRequest) returns (SurrenderResponse);
+
+  // Get current game state
+  rpc GetGameState(GetGameStateRequest) returns (GetGameStateResponse);
+
+  // End game and save results
+  rpc EndGame(EndGameRequest) returns (EndGameResponse);
 }
 
-message JoinQueueRequest {
-  string player_id = 1;
-  int32 current_rating = 2;
-}
-
-message JoinQueueResponse {
-  string ticket_id = 1;
-  string status = 2; // "QUEUED", "MATCH_FOUND"
-}
-
-message GameAction {
+// Messages
+message StartGameRequest {
   string match_id = 1;
-  string player_id = 2;
-  oneof action {
-    string keystroke = 3; // For real-time visualization
-    string submit_guess = 4;
-    string surrender = 5;
-  }
+  repeated string player_ids = 2;
+  string game_mode = 3;
 }
 
-message GameEvent {
-  oneof event {
-    MatchStarted match_started = 1;
-    OpponentProgress opponent_progress = 2;
-    GameResult game_result = 3;
-    PuzzleState puzzle_state = 4;
-  }
+message StartGameResponse {
+  GameState game_state = 1;
+  string websocket_url = 2;
 }
 
-message MatchStarted {
+message SubmitSolutionRequest {
   string match_id = 1;
-  string opponent_id = 2;
-  string opponent_username = 3;
-  PuzzleState puzzle = 4;
+  string user_id = 2;
+  string puzzle_id = 3;
+  string solution = 4;
+  int32 solve_time_ms = 5;
+  int32 hints_used = 6;
 }
 
-message PuzzleState {
-  string encrypted_text = 1;
+message SubmitSolutionResponse {
+  bool is_correct = 1;
+  int32 score = 2;
+  GameState updated_state = 3;
+  bool match_ended = 4;
+  string winner_id = 5;
+}
+
+message UsePowerUpRequest {
+  string match_id = 1;
+  string user_id = 2;
+  string power_up_type = 3; // HINT, TIME_FREEZE, SKIP, DOUBLE_POINTS
+}
+
+message UsePowerUpResponse {
+  bool success = 1;
+  PowerUpEffect effect = 2;
+  GameState updated_state = 3;
+}
+
+message SurrenderRequest {
+  string match_id = 1;
+  string user_id = 2;
+}
+
+message SurrenderResponse {
+  bool success = 1;
+  string winner_id = 2;
+}
+
+message GetGameStateRequest {
+  string match_id = 1;
+}
+
+message GetGameStateResponse {
+  GameState game_state = 1;
+}
+
+message EndGameRequest {
+  string match_id = 1;
+  string winner_id = 2;
+  repeated PlayerPerformance performances = 3;
+}
+
+message EndGameResponse {
+  bool success = 1;
+  MatchResult result = 2;
+}
+
+// Models
+message GameState {
+  string match_id = 1;
+  string status = 2; // WAITING, IN_PROGRESS, COMPLETED
+  repeated PlayerState players = 3;
+  Puzzle current_puzzle = 4;
+  int32 puzzle_index = 5;
+  int32 total_puzzles = 6;
+  int64 started_at = 7;
+  int32 time_limit_seconds = 8;
+  int32 elapsed_time_seconds = 9;
+}
+
+message PlayerState {
+  string user_id = 1;
+  string username = 2;
+  int32 score = 3;
+  int32 puzzles_solved = 4;
+  int32 hints_used = 5;
+  repeated string available_power_ups = 6;
+  bool is_ready = 7;
+  bool has_surrendered = 8;
+}
+
+message Puzzle {
+  string id = 1;
   string cipher_type = 2;
   int32 difficulty = 3;
+  string encrypted_text = 4;
+  int32 max_score = 5;
+  string hint = 6; // Available after using hint power-up
 }
 
-message OpponentProgress {
-  float progress_percentage = 1;
+message PowerUpEffect {
+  string type = 1;
+  string description = 2;
+  int32 duration_seconds = 3;
+  string hint_text = 4; // For HINT power-up
 }
 
-message GameResult {
-  string winner_id = 1;
-  int32 rating_change = 2;
+message PlayerPerformance {
+  string user_id = 1;
+  int32 final_score = 2;
+  int32 puzzles_solved = 3;
+  int32 total_solve_time_ms = 4;
+  int32 hints_used = 5;
+  float accuracy = 6;
+}
+
+message MatchResult {
+  string match_id = 1;
+  string winner_id = 2;
+  int32 duration_seconds = 3;
+  repeated PlayerPerformance performances = 4;
+  repeated int32 elo_changes = 5;
+}
+
+// WebSocket Message Types (for real-time updates)
+message GameEvent {
+  string type = 1; // MATCH_STARTED, PUZZLE_UPDATE, OPPONENT_PROGRESS, MATCH_ENDED, etc.
+  string match_id = 2;
+  oneof payload {
+    GameState game_state = 3;
+    PlayerState player_state = 4;
+    Puzzle puzzle = 5;
+    MatchResult result = 6;
+    string message = 7;
+  }
 }

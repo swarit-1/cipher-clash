@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package puzzle;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/puzzle";
+
+// Puzzle Engine Service - Generates and validates puzzles
+service PuzzleService {
+  // Generate a random puzzle
+  rpc GeneratePuzzle(GeneratePuzzleRequest) returns (GeneratePuzzleResponse);
+
+  // Generate multiple puzzles for a match
+  rpc GenerateMatchPuzzles(GenerateMatchPuzzlesRequest) returns (GenerateMatchPuzzlesResponse);
+
+  // Validate a puzzle solution
+  rpc ValidateSolution(ValidateSolutionRequest) returns (ValidateSolutionResponse);
+
+  // Get puzzle by ID
+  rpc GetPuzzle(GetPuzzleRequest) returns (GetPuzzleResponse);
+
+  // Get puzzle statistics
+  rpc GetPuzzleStats(GetPuzzleStatsRequest) returns (GetPuzzleStatsResponse);
+}
+
+// Messages
+message GeneratePuzzleRequest {
+  string cipher_type = 1; // CAESAR, VIGENERE, etc. (empty for random)
+  int32 difficulty = 2; // 1-10 (0 for auto-adjust based on ELO)
+  int32 player_elo = 3; // For difficulty adjustment
+}
+
+message GeneratePuzzleResponse {
+  Puzzle puzzle = 1;
+}
+
+message GenerateMatchPuzzlesRequest {
+  int32 count = 1; // Number of puzzles to generate
+  int32 min_difficulty = 2;
+  int32 max_difficulty = 3;
+  repeated string cipher_types = 4; // Empty for all types
+  int32 avg_player_elo = 5;
+}
+
+message GenerateMatchPuzzlesResponse {
+  repeated Puzzle puzzles = 1;
+}
+
+message ValidateSolutionRequest {
+  string puzzle_id = 1;
+  string submitted_solution = 2;
+  int32 solve_time_ms = 3;
+}
+
+message ValidateSolutionResponse {
+  bool is_correct = 1;
+  string correct_solution = 2; // Only if incorrect
+  int32 score = 3; // Points earned (0 if incorrect)
+  float accuracy = 4; // 0.0-1.0
+}
+
+message GetPuzzleRequest {
+  string puzzle_id = 1;
+}
+
+message GetPuzzleResponse {
+  Puzzle puzzle = 1;
+}
+
+message GetPuzzleStatsRequest {
+  string puzzle_id = 1;
+}
+
+message GetPuzzleStatsResponse {
+  int32 times_used = 1;
+  int32 times_solved = 2;
+  int32 avg_solve_time_ms = 3;
+  float success_rate = 4;
+}
+
+// Puzzle Model
+message Puzzle {
+  string id = 1;
+  string cipher_type = 2;
+  int32 difficulty = 3;
+  string encrypted_text = 4;
+  string plaintext = 5; // Server-side only, not sent to client
+  string config = 6; // JSON config for cipher params
+  int32 estimated_solve_time_ms = 7;
+}
+
+// Cipher Types Enum (for reference)
+enum CipherType {
+  CIPHER_TYPE_UNSPECIFIED = 0;
+  CAESAR = 1;
+  VIGENERE = 2;
+  RAIL_FENCE = 3;
+  PLAYFAIR = 4;
+  SUBSTITUTION = 5;
+  TRANSPOSITION = 6;
+  XOR = 7;
+  BASE64 = 8;
+  MORSE = 9;
+  BINARY = 10;
+  HEXADECIMAL = 11;
+  ROT13 = 12;
+  ATBASH = 13;
+  BOOK_CIPHER = 14;
+  RSA_SIMPLE = 15;
+}

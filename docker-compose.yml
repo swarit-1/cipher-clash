@@ -8,12 +8,64 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: cipher_clash
     volumes:
-      - ./infra/postgres/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/schema_v2.sql:/docker-entrypoint-initdb.d/schema_v2.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_DEFAULT_VHOST: cipher_clash
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args:
+        SERVICE_NAME: auth
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/cipher_clash?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - JWT_SECRET=your-secret-key-change-in-production
+      - JWT_ACCESS_TTL=15m
+      - JWT_REFRESH_TTL=168h
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   matchmaker:
     build:
@@ -24,9 +76,35 @@ services:
     ports:
       - "8081:8081"
     environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/cipher_clash?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/cipher_clash
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  puzzle-engine:
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args:
+        SERVICE_NAME: puzzle_engine
+    ports:
+      - "8082:8082"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/cipher_clash?sslmode=disable
       - REDIS_ADDR=redis:6379
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   game-service:
     build:
@@ -35,8 +113,21 @@ services:
       args:
         SERVICE_NAME: game
     ports:
-      - "8082:8082"
+      - "8083:8083"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/cipher_clash?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/cipher_clash
     depends_on:
-      - redis
-      - postgres
-  # Add other services as needed
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
