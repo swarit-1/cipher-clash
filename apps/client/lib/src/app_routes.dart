@@ -48,18 +48,18 @@ class AppRoutes {
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case login:
+      case '/login':
         return MaterialPageRoute(builder: (context) => const LoginScreen());
-      case register:
+      case '/register':
         return MaterialPageRoute(builder: (context) => const RegisterScreen());
-      case menu:
+      case '/menu':
         return MaterialPageRoute(builder: (context) => const MainMenuScreen());
-      case matchmaking:
+      case '/matchmaking':
         return MaterialPageRoute(
           builder: (context) => const MatchmakingScreen(),
           settings: settings,
         );
-      case queue:
+      case '/queue':
         return MaterialPageRoute(
           builder: (context) {
             final args = settings.arguments as Map<String, dynamic>?;
@@ -68,24 +68,24 @@ class AppRoutes {
             );
           },
         );
-      case game:
+      case '/game':
         return MaterialPageRoute(builder: (context) => const EnhancedGameScreen());
-      case matchSummary:
+      case '/match-summary':
         return MaterialPageRoute(
           builder: (context) {
             final args = settings.arguments as Map<String, dynamic>?;
             return MatchSummaryScreen(matchData: args);
           },
         );
-      case profile:
+      case '/profile':
         return MaterialPageRoute(builder: (context) => const ProfileScreen());
-      case leaderboard:
+      case '/leaderboard':
         return MaterialPageRoute(builder: (context) => const LeaderboardScreen());
-      case achievements:
+      case '/achievements':
         return MaterialPageRoute(builder: (context) => const AchievementsScreen());
-      case settings:
+      case '/settings':
         return MaterialPageRoute(builder: (context) => const SettingsScreen());
-      case social:
+      case '/social':
         return MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(title: const Text('Social')),
