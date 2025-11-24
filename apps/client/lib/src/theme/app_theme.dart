@@ -51,13 +51,13 @@ class AppTheme {
   // ========================================
   // SPACING SYSTEM (8px grid)
   // ========================================
-  static const double spacing1 = 8.0;   // 8px
-  static const double spacing2 = 16.0;  // 16px
-  static const double spacing3 = 24.0;  // 24px
-  static const double spacing4 = 32.0;  // 32px
-  static const double spacing5 = 40.0;  // 40px
-  static const double spacing6 = 48.0;  // 48px
-  static const double spacing8 = 64.0;  // 64px
+  static const double spacing1 = 8.0; // 8px
+  static const double spacing2 = 16.0; // 16px
+  static const double spacing3 = 24.0; // 24px
+  static const double spacing4 = 32.0; // 32px
+  static const double spacing5 = 40.0; // 40px
+  static const double spacing6 = 48.0; // 48px
+  static const double spacing8 = 64.0; // 64px
   static const double spacing10 = 80.0; // 80px
 
   // ========================================
@@ -73,59 +73,59 @@ class AppTheme {
   // GLOW EFFECTS
   // ========================================
   static List<BoxShadow> glowCyberBlue({double intensity = 1.0}) => [
-    BoxShadow(
-      color: cyberBlue.withOpacity(0.4 * intensity),
-      blurRadius: 12 * intensity,
-      spreadRadius: 2 * intensity,
-    ),
-    BoxShadow(
-      color: cyberBlue.withOpacity(0.2 * intensity),
-      blurRadius: 24 * intensity,
-      spreadRadius: 4 * intensity,
-    ),
-  ];
+        BoxShadow(
+          color: cyberBlue.withValues(alpha: 0.4 * intensity),
+          blurRadius: 12 * intensity,
+          spreadRadius: 2 * intensity,
+        ),
+        BoxShadow(
+          color: cyberBlue.withValues(alpha: 0.2 * intensity),
+          blurRadius: 24 * intensity,
+          spreadRadius: 4 * intensity,
+        ),
+      ];
 
   static List<BoxShadow> glowNeonPurple({double intensity = 1.0}) => [
-    BoxShadow(
-      color: neonPurple.withOpacity(0.4 * intensity),
-      blurRadius: 12 * intensity,
-      spreadRadius: 2 * intensity,
-    ),
-    BoxShadow(
-      color: neonPurple.withOpacity(0.2 * intensity),
-      blurRadius: 24 * intensity,
-      spreadRadius: 4 * intensity,
-    ),
-  ];
+        BoxShadow(
+          color: neonPurple.withValues(alpha: 0.4 * intensity),
+          blurRadius: 12 * intensity,
+          spreadRadius: 2 * intensity,
+        ),
+        BoxShadow(
+          color: neonPurple.withValues(alpha: 0.2 * intensity),
+          blurRadius: 24 * intensity,
+          spreadRadius: 4 * intensity,
+        ),
+      ];
 
   static List<BoxShadow> glowElectricGreen({double intensity = 1.0}) => [
-    BoxShadow(
-      color: electricGreen.withOpacity(0.4 * intensity),
-      blurRadius: 12 * intensity,
-      spreadRadius: 2 * intensity,
-    ),
-    BoxShadow(
-      color: electricGreen.withOpacity(0.2 * intensity),
-      blurRadius: 24 * intensity,
-      spreadRadius: 4 * intensity,
-    ),
-  ];
+        BoxShadow(
+          color: electricGreen.withValues(alpha: 0.4 * intensity),
+          blurRadius: 12 * intensity,
+          spreadRadius: 2 * intensity,
+        ),
+        BoxShadow(
+          color: electricGreen.withValues(alpha: 0.2 * intensity),
+          blurRadius: 24 * intensity,
+          spreadRadius: 4 * intensity,
+        ),
+      ];
 
   static List<BoxShadow> glowNeonRed({double intensity = 1.0}) => [
-    BoxShadow(
-      color: neonRed.withOpacity(0.4 * intensity),
-      blurRadius: 10 * intensity,
-      spreadRadius: 2 * intensity,
-    ),
-  ];
+        BoxShadow(
+          color: neonRed.withValues(alpha: 0.4 * intensity),
+          blurRadius: 10 * intensity,
+          spreadRadius: 2 * intensity,
+        ),
+      ];
 
   static List<BoxShadow> get cardShadow => [
-    BoxShadow(
-      color: Colors.black.withOpacity(0.3),
-      blurRadius: 8,
-      offset: const Offset(0, 4),
-    ),
-  ];
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.3),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        ),
+      ];
 
   // ========================================
   // GRADIENTS
@@ -154,105 +154,105 @@ class AppTheme {
 
   /// Headings: Space Grotesk (Bold, Futuristic)
   static TextTheme get headingTextTheme => TextTheme(
-    displayLarge: GoogleFonts.spaceGrotesk(
-      fontSize: 57,
-      fontWeight: FontWeight.w700,
-      height: 1.12,
-      letterSpacing: -0.25,
-      color: textPrimary,
-    ),
-    displayMedium: GoogleFonts.spaceGrotesk(
-      fontSize: 45,
-      fontWeight: FontWeight.w700,
-      height: 1.16,
-      color: textPrimary,
-    ),
-    displaySmall: GoogleFonts.spaceGrotesk(
-      fontSize: 36,
-      fontWeight: FontWeight.w700,
-      height: 1.22,
-      color: textPrimary,
-    ),
-    headlineLarge: GoogleFonts.spaceGrotesk(
-      fontSize: 32,
-      fontWeight: FontWeight.w700,
-      height: 1.25,
-      color: textPrimary,
-    ),
-    headlineMedium: GoogleFonts.spaceGrotesk(
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
-      height: 1.29,
-      color: textPrimary,
-    ),
-    headlineSmall: GoogleFonts.spaceGrotesk(
-      fontSize: 24,
-      fontWeight: FontWeight.w600,
-      height: 1.33,
-      color: textPrimary,
-    ),
-  );
+        displayLarge: GoogleFonts.spaceGrotesk(
+          fontSize: 57,
+          fontWeight: FontWeight.w700,
+          height: 1.12,
+          letterSpacing: -0.25,
+          color: textPrimary,
+        ),
+        displayMedium: GoogleFonts.spaceGrotesk(
+          fontSize: 45,
+          fontWeight: FontWeight.w700,
+          height: 1.16,
+          color: textPrimary,
+        ),
+        displaySmall: GoogleFonts.spaceGrotesk(
+          fontSize: 36,
+          fontWeight: FontWeight.w700,
+          height: 1.22,
+          color: textPrimary,
+        ),
+        headlineLarge: GoogleFonts.spaceGrotesk(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          height: 1.25,
+          color: textPrimary,
+        ),
+        headlineMedium: GoogleFonts.spaceGrotesk(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          height: 1.29,
+          color: textPrimary,
+        ),
+        headlineSmall: GoogleFonts.spaceGrotesk(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          height: 1.33,
+          color: textPrimary,
+        ),
+      );
 
   /// Body: Inter (Clean, Readable)
   static TextTheme get bodyTextTheme => TextTheme(
-    bodyLarge: GoogleFonts.inter(
-      fontSize: 16,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-      letterSpacing: 0.15,
-      color: textPrimary,
-    ),
-    bodyMedium: GoogleFonts.inter(
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-      height: 1.43,
-      letterSpacing: 0.25,
-      color: textSecondary,
-    ),
-    bodySmall: GoogleFonts.inter(
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.33,
-      letterSpacing: 0.4,
-      color: textTertiary,
-    ),
-    labelLarge: GoogleFonts.inter(
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-      height: 1.43,
-      letterSpacing: 0.1,
-      color: textPrimary,
-    ),
-    labelMedium: GoogleFonts.inter(
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-      height: 1.33,
-      letterSpacing: 0.5,
-      color: textPrimary,
-    ),
-    labelSmall: GoogleFonts.inter(
-      fontSize: 11,
-      fontWeight: FontWeight.w500,
-      height: 1.45,
-      letterSpacing: 0.5,
-      color: textSecondary,
-    ),
-  );
+        bodyLarge: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          height: 1.5,
+          letterSpacing: 0.15,
+          color: textPrimary,
+        ),
+        bodyMedium: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 1.43,
+          letterSpacing: 0.25,
+          color: textSecondary,
+        ),
+        bodySmall: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          height: 1.33,
+          letterSpacing: 0.4,
+          color: textTertiary,
+        ),
+        labelLarge: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          height: 1.43,
+          letterSpacing: 0.1,
+          color: textPrimary,
+        ),
+        labelMedium: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          height: 1.33,
+          letterSpacing: 0.5,
+          color: textPrimary,
+        ),
+        labelSmall: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          height: 1.45,
+          letterSpacing: 0.5,
+          color: textSecondary,
+        ),
+      );
 
   /// Code/Mono: JetBrains Mono (Terminal feel)
   static TextStyle get monoStyle => GoogleFonts.jetBrainsMono(
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
-    color: cyberBlue,
-  );
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        height: 1.5,
+        color: cyberBlue,
+      );
 
   static TextStyle get monoStyleLarge => GoogleFonts.jetBrainsMono(
-    fontSize: 18,
-    fontWeight: FontWeight.w500,
-    height: 1.4,
-    color: cyberBlue,
-  );
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        height: 1.4,
+        color: cyberBlue,
+      );
 
   // ========================================
   // THEME DATA
@@ -272,14 +272,12 @@ class AppTheme {
         secondary: neonPurple,
         tertiary: electricGreen,
         error: neonRed,
-        background: deepDark,
         surface: darkNavy,
-        surfaceVariant: surfaceVariant,
+        surfaceContainerHighest: surfaceVariant,
         onPrimary: Colors.black,
         onSecondary: Colors.black,
         onTertiary: Colors.black,
         onError: Colors.white,
-        onBackground: textPrimary,
         onSurface: textPrimary,
       ),
 
@@ -301,7 +299,7 @@ class AppTheme {
 
       // App Bar
       appBarTheme: AppBarTheme(
-        backgroundColor: deepDark.withOpacity(0.95),
+        backgroundColor: deepDark.withValues(alpha: 0.95),
         elevation: 0,
         centerTitle: false,
         titleTextStyle: headings.headlineSmall,
@@ -309,13 +307,13 @@ class AppTheme {
       ),
 
       // Card
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: darkNavy,
         elevation: 4,
-        shadowColor: Colors.black.withOpacity(0.5),
+        shadowColor: Colors.black.withValues(alpha: 0.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          side: BorderSide(color: cyberBlue.withOpacity(0.1), width: 1),
+          side: BorderSide(color: cyberBlue.withValues(alpha: 0.1), width: 1),
         ),
       ),
 
@@ -387,11 +385,11 @@ class AppTheme {
         contentPadding: const EdgeInsets.all(spacing2),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          borderSide: BorderSide(color: cyberBlue.withOpacity(0.3)),
+          borderSide: BorderSide(color: cyberBlue.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          borderSide: BorderSide(color: cyberBlue.withOpacity(0.3)),
+          borderSide: BorderSide(color: cyberBlue.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
@@ -429,7 +427,7 @@ class AppTheme {
 
       // Divider
       dividerTheme: DividerThemeData(
-        color: cyberBlue.withOpacity(0.1),
+        color: cyberBlue.withValues(alpha: 0.1),
         thickness: 1,
         space: spacing2,
       ),
@@ -437,24 +435,24 @@ class AppTheme {
       // Chip
       chipTheme: ChipThemeData(
         backgroundColor: surfaceVariant,
-        selectedColor: cyberBlue.withOpacity(0.2),
-        disabledColor: textDisabled.withOpacity(0.1),
+        selectedColor: cyberBlue.withValues(alpha: 0.2),
+        disabledColor: textDisabled.withValues(alpha: 0.1),
         labelStyle: body.labelMedium!,
         secondaryLabelStyle: body.labelSmall!,
         padding: const EdgeInsets.symmetric(horizontal: spacing1, vertical: 4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusSmall),
-          side: BorderSide(color: cyberBlue.withOpacity(0.3)),
+          side: BorderSide(color: cyberBlue.withValues(alpha: 0.3)),
         ),
       ),
 
       // Dialog
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: darkNavy,
         elevation: 24,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLarge),
-          side: BorderSide(color: cyberBlue.withOpacity(0.2)),
+          side: BorderSide(color: cyberBlue.withValues(alpha: 0.2)),
         ),
         titleTextStyle: headings.headlineSmall,
         contentTextStyle: body.bodyMedium,
