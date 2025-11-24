@@ -1,0 +1,72 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'cipher-clash'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Auth Service
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Puzzle Engine
+  - job_name: 'puzzle-service'
+    static_configs:
+      - targets: ['puzzle:8082']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Matchmaker Service
+  - job_name: 'matchmaker-service'
+    static_configs:
+      - targets: ['matchmaker:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Game Service
+  - job_name: 'game-service'
+    static_configs:
+      - targets: ['game:8083']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Redis Exporter
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # RabbitMQ Exporter
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+
+  # Node Exporter (System metrics)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

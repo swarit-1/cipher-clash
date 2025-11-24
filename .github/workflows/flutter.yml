@@ -1,0 +1,167 @@
+name: Flutter CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/client/**'
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test Flutter App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        working-directory: apps/client
+        run: flutter pub get
+
+      - name: Verify formatting
+        working-directory: apps/client
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze code
+        working-directory: apps/client
+        run: flutter analyze
+
+      - name: Run tests
+        working-directory: apps/client
+        run: flutter test --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: apps/client/coverage/lcov.info
+          flags: flutter
+
+  build-web:
+    name: Build Web App
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        working-directory: apps/client
+        run: flutter pub get
+
+      - name: Build web app
+        working-directory: apps/client
+        run: flutter build web --release --web-renderer canvaskit
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: apps/client/build/web/
+
+  build-android:
+    name: Build Android App
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        working-directory: apps/client
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: apps/client
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: apps/client/build/app/outputs/flutter-apk/app-release.apk
+
+  deploy-web-staging:
+    name: Deploy Web to Staging
+    needs: build-web
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging-web
+      url: https://staging-app.cipherclash.com
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Deploy to Firebase Hosting (Staging)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: staging
+          projectId: cipher-clash-staging
+
+  deploy-web-production:
+    name: Deploy Web to Production
+    needs: build-web
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production-web
+      url: https://app.cipherclash.com
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Deploy to Firebase Hosting (Production)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: live
+          projectId: cipher-clash-prod
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "🎉 Flutter app deployed to production!"
+          echo "URL: https://app.cipherclash.com"
