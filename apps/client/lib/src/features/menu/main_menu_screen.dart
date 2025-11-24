@@ -139,7 +139,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
           },
         ),
       ],
-    ).animate().fadeIn();
+    );
   }
 
   Widget _buildUserStatsCard() {
