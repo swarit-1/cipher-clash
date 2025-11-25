@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/swarit-1/cipher-clash/pkg/cache"
 	"github.com/swarit-1/cipher-clash/pkg/config"
 	"github.com/swarit-1/cipher-clash/pkg/db"
@@ -18,12 +18,29 @@ import (
 )
 
 func main() {
+	// Load .env file from root directory (../../.env) or current directory
+	_ = godotenv.Load("../../.env")
+	_ = godotenv.Load() // Fallback to current directory
+
+	// Get port from environment or use default
+	// Determine which port to use
+	port := os.Getenv("PORT") // Can be used for overrides
+	if port == "" {
+		port = os.Getenv("PUZZLE_ENGINE_PORT") // Service-specific port from .env
+	}
+	if port == "" {
+		port = "8087" // Final fallback
+	}
+
 	// Initialize logger
 	log := logger.New("puzzle-engine")
 	log.Info("Starting Puzzle Engine Service...")
 
 	// Load configuration
 	cfg := config.LoadConfig()
+
+	// Override config port to ensure consistency across the app
+	cfg.Server.Port = port
 
 	// Initialize database
 	database, err := db.New(cfg.Database, log)
@@ -59,7 +76,7 @@ func main() {
 	mux.HandleFunc("/api/v1/puzzle/get", puzzleHandler.GetPuzzle)
 
 	// Create HTTP server
-	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+	addr := "0.0.0.0:" + port
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      mux,
@@ -71,7 +88,7 @@ func main() {
 	// Start server in goroutine
 	go func() {
 		log.Info("Puzzle Engine Service listening", map[string]interface{}{
-			"address": addr,
+			"port": port,
 		})
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Server failed to start", map[string]interface{}{

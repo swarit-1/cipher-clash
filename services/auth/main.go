@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/swarit-1/cipher-clash/pkg/auth"
 	"github.com/swarit-1/cipher-clash/pkg/cache"
 	"github.com/swarit-1/cipher-clash/pkg/config"
@@ -21,12 +21,31 @@ import (
 )
 
 func main() {
+	// Load .env file from root directory (../../.env) or current directory
+	_ = godotenv.Load("../../.env")
+	_ = godotenv.Load() // Fallback to current directory
+
+	// Determine the port with proper priority:
+	// 1. AUTH_SERVICE_PORT (service-specific from .env) - highest priority
+	// 2. PORT (generic override) - for Docker/special cases
+	// 3. Default 8085 - sensible fallback
+	port := os.Getenv("AUTH_SERVICE_PORT")
+	if port == "" {
+		port = os.Getenv("PORT")
+	}
+	if port == "" {
+		port = "8085"
+	}
+
 	// Initialize logger
 	log := logger.New("auth-service")
 	log.Info("Starting Auth Service...")
 
 	// Load configuration
 	cfg := config.LoadConfig()
+
+	// Override config port to ensure consistency across the app
+	cfg.Server.Port = port
 
 	// Initialize database
 	database, err := db.New(cfg.Database, log)
@@ -76,7 +95,7 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/logout", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(authHandler.Logout))))
 
 	// Create HTTP server
-	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+	addr := "0.0.0.0:" + port
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      mux,
@@ -88,7 +107,7 @@ func main() {
 	// Start server in goroutine
 	go func() {
 		log.Info("Auth Service listening", map[string]interface{}{
-			"address": addr,
+			"port": port,
 		})
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Server failed to start", map[string]interface{}{
