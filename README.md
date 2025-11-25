@@ -29,19 +29,31 @@ curl http://localhost:8081/health  # Matchmaker
 ### Windows:
 **Note:** Docker and Make are not reliably supported on Windows for this project.
 
-```bash
+```powershell
 # 1. Start infrastructure manually
 # Install PostgreSQL, Redis, and RabbitMQ locally
 # Or use WSL2 with Docker
 
-# 2. Run services (in separate terminals)
-cd services/auth && go run main.go
-cd services/puzzle_engine && go run main.go
-cd services/matchmaker && go run main.go
-cd services/achievement && go run main.go
+# 2. Run services (in separate PowerShell terminals)
+# Terminal 1 - Auth Service
+cd services\auth
+go run main.go
 
-# 3. Run Flutter client
-cd apps/client && flutter run -d chrome
+# Terminal 2 - Puzzle Engine
+cd services\puzzle_engine
+go run main.go
+
+# Terminal 3 - Matchmaker
+cd services\matchmaker
+go run main.go
+
+# Terminal 4 - Achievement Service
+cd services\achievement
+go run main.go
+
+# Terminal 5 - Flutter Client
+cd apps\client
+flutter run -d chrome
 
 # Note: Chrome --no-sandbox warning can be ignored (Flutter limitation on Windows)
 ```
@@ -140,10 +152,15 @@ make docker-up  # Start services
 ```
 
 ### Setup (Windows)
-1. Install PostgreSQL, Redis, and RabbitMQ manually
+1. Install PostgreSQL, Redis, and RabbitMQ manually (or via Chocolatey)
 2. Configure `.env` file with connection strings
-3. Run each service with `go run main.go`
-4. Run Flutter with `flutter run -d chrome`
+3. Open 5 separate PowerShell terminals
+4. Run each service in its own terminal:
+   - `cd services\auth; go run main.go`
+   - `cd services\puzzle_engine; go run main.go`
+   - `cd services\matchmaker; go run main.go`
+   - `cd services\achievement; go run main.go`
+   - `cd apps\client; flutter run -d chrome`
 
 ### Useful Commands (Linux/macOS)
 ```bash
@@ -155,12 +172,22 @@ make docker-logs     # View service logs
 ```
 
 ### Useful Commands (Windows)
-```bash
-go build ./services/auth        # Build auth service
-go build ./services/puzzle_engine
-go build ./services/matchmaker
-go build ./services/achievement
-flutter build web              # Build Flutter web app
+```powershell
+# Build services
+go build .\services\auth
+go build .\services\puzzle_engine
+go build .\services\matchmaker
+go build .\services\achievement
+
+# Build Flutter web app
+cd apps\client
+flutter build web
+
+# Check service health (in separate terminals after starting services)
+curl http://localhost:8080/health  # Auth
+curl http://localhost:8081/health  # Matchmaker
+curl http://localhost:8082/health  # Puzzle
+curl http://localhost:8083/health  # Achievement
 ```
 
 ---
