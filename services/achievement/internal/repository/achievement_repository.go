@@ -21,11 +21,11 @@ type AchievementRepository interface {
 }
 
 type achievementRepository struct {
-	db  *db.Database
+	db  *db.DB
 	log *logger.Logger
 }
 
-func NewAchievementRepository(database *db.Database, log *logger.Logger) AchievementRepository {
+func NewAchievementRepository(database *db.DB, log *logger.Logger) AchievementRepository {
 	return &achievementRepository{
 		db:  database,
 		log: log,
@@ -41,7 +41,7 @@ func (r *achievementRepository) Create(ctx context.Context, achievement *interna
 		RETURNING created_at, updated_at
 	`
 
-	err := r.db.Pool.QueryRow(
+	err := r.db.QueryRowContext(
 		ctx,
 		query,
 		achievement.ID,
@@ -79,7 +79,7 @@ func (r *achievementRepository) GetByID(ctx context.Context, id string) (*intern
 	`
 
 	achievement := &internal.Achievement{}
-	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&achievement.ID,
 		&achievement.Name,
 		&achievement.Description,
@@ -121,7 +121,7 @@ func (r *achievementRepository) GetAll(ctx context.Context) ([]*internal.Achieve
 			name ASC
 	`
 
-	rows, err := r.db.Pool.Query(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		r.log.Error("Failed to get all achievements", map[string]interface{}{
 			"error": err.Error(),
@@ -165,7 +165,7 @@ func (r *achievementRepository) GetByRarity(ctx context.Context, rarity string) 
 		ORDER BY name ASC
 	`
 
-	rows, err := r.db.Pool.Query(ctx, query, rarity)
+	rows, err := r.db.QueryContext(ctx, query, rarity)
 	if err != nil {
 		r.log.Error("Failed to get achievements by rarity", map[string]interface{}{
 			"error":  err.Error(),
@@ -211,7 +211,7 @@ func (r *achievementRepository) Update(ctx context.Context, achievement *interna
 		RETURNING updated_at
 	`
 
-	err := r.db.Pool.QueryRow(
+	err := r.db.QueryRowContext(
 		ctx,
 		query,
 		achievement.Name,
@@ -247,7 +247,7 @@ func (r *achievementRepository) Update(ctx context.Context, achievement *interna
 func (r *achievementRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM achievements WHERE id = $1`
 
-	result, err := r.db.Pool.Exec(ctx, query, id)
+	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		r.log.Error("Failed to delete achievement", map[string]interface{}{
 			"error": err.Error(),
@@ -256,7 +256,12 @@ func (r *achievementRepository) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete achievement: %w", err)
 	}
 
-	if result.RowsAffected() == 0 {
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
 		return fmt.Errorf("achievement not found")
 	}
 

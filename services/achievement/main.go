@@ -82,10 +82,6 @@ func main() {
 	mux.HandleFunc("/api/v1/user/achievements/progress", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(achievementHandler.GetUserProgress))))
 	mux.HandleFunc("/api/v1/user/achievements/stats", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(achievementHandler.GetUserStats))))
 
-	// Admin routes (create/update achievements)
-	mux.HandleFunc("/api/v1/admin/achievements", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(authMiddleware.RequireAdmin(achievementHandler.CreateAchievement)))))
-	mux.HandleFunc("/api/v1/admin/achievements/update", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(authMiddleware.RequireAdmin(achievementHandler.UpdateAchievement)))))
-
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, "8083") // Achievement service on port 8083
 	server := &http.Server{

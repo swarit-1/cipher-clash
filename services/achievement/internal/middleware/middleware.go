@@ -12,7 +12,6 @@ import (
 type contextKey string
 
 const UserIDKey contextKey = "user_id"
-const UserRoleKey contextKey = "user_role"
 
 type AuthMiddleware struct {
 	jwtManager *auth.JWTManager
@@ -61,7 +60,7 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		claims, err := m.jwtManager.ValidateToken(tokenString)
+		claims, err := m.jwtManager.ValidateToken(tokenString, auth.AccessToken)
 		if err != nil {
 			m.log.Error("Invalid token", map[string]interface{}{
 				"error": err.Error(),
@@ -72,23 +71,11 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 
 		// Add user info to context
 		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
-		ctx = context.WithValue(ctx, UserRoleKey, claims.Role)
 
 		next(w, r.WithContext(ctx))
 	}
 }
 
-func (m *AuthMiddleware) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		role, ok := r.Context().Value(UserRoleKey).(string)
-		if !ok || role != "admin" {
-			http.Error(w, `{"error":"Admin access required"}`, http.StatusForbidden)
-			return
-		}
-
-		next(w, r)
-	}
-}
 
 // Helper to get user ID from context
 func GetUserIDFromContext(ctx context.Context) (string, bool) {

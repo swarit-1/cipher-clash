@@ -26,15 +26,37 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
   bool _gameActive = true;
   bool _isPlayerWinner = false;
   String _gameResult = '';
+  int _currentPuzzleIndex = 0;
+  int _playerPuzzlesSolved = 0;
+  int _opponentPuzzlesSolved = 0;
 
-  // Mock game data - TODO: Replace with actual game state
+  // Three puzzles per round
+  final List<Map<String, dynamic>> _puzzles = [
+    {
+      'cipherType': 'CAESAR',
+      'difficulty': 5,
+      'encryptedText': 'KHOOR ZRUOG',
+      'solution': 'HELLO WORLD',
+      'hint': 'Shift by 3',
+    },
+    {
+      'cipherType': 'VIGENERE',
+      'difficulty': 7,
+      'encryptedText': 'RIJVS UYVJN',
+      'solution': 'HELLO WORLD',
+      'hint': 'Keyword: LEMON',
+    },
+    {
+      'cipherType': 'ATBASH',
+      'difficulty': 6,
+      'encryptedText': 'SVOOL DLIOW',
+      'solution': 'HELLO WORLD',
+      'hint': 'Reverse alphabet',
+    },
+  ];
+
+  // Player info - TODO: Replace with actual game state
   final Map<String, dynamic> _gameData = {
-    'cipherType': 'VIGENERE',
-    'difficulty': 7,
-    'encryptedText': 'RIJVS UYVJN',
-    'hint': 'Keyword: LEMON',
-    'playerScore': 0,
-    'opponentScore': 0,
     'playerName': 'You',
     'opponentName': 'CipherKing',
     'playerElo': 1650,
@@ -99,8 +121,9 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
 
     HapticFeedback.mediumImpact();
 
-    // TODO: Validate solution with backend
-    final isCorrect = _solutionController.text.toUpperCase() == 'HELLO WORLD';
+    // Check solution against current puzzle
+    final currentPuzzle = _puzzles[_currentPuzzleIndex];
+    final isCorrect = _solutionController.text.toUpperCase() == currentPuzzle['solution'];
 
     if (isCorrect) {
       _onCorrectSolution();
@@ -111,16 +134,62 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
 
   void _onCorrectSolution() {
     setState(() {
-      _gameActive = false;
-      _gameResult = 'VICTORY!';
-      _isPlayerWinner = true;
-      _gameData['playerScore'] = 1500;
+      _playerPuzzlesSolved++;
+      _solutionController.clear();
     });
 
     HapticFeedback.heavyImpact();
-    _confettiController.play();
 
-    _navigateToSummary();
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: AppTheme.electricGreen),
+            const SizedBox(width: 8),
+            Text('Correct! Puzzle ${_currentPuzzleIndex + 1}/3 solved'),
+          ],
+        ),
+        backgroundColor: AppTheme.electricGreen.withValues(alpha: 0.2),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    // Check if all puzzles are solved
+    if (_currentPuzzleIndex >= _puzzles.length - 1) {
+      // Won the game
+      setState(() {
+        _gameActive = false;
+        _gameResult = 'VICTORY!';
+        _isPlayerWinner = true;
+      });
+      _confettiController.play();
+      _navigateToSummary();
+    } else {
+      // Move to next puzzle
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          setState(() {
+            _currentPuzzleIndex++;
+          });
+        }
+      });
+
+      // Simulate opponent progress (random)
+      _simulateOpponentProgress();
+    }
+  }
+
+  void _simulateOpponentProgress() {
+    // Simulate opponent solving puzzles with some randomness
+    Future.delayed(Duration(seconds: 5 + (_currentPuzzleIndex * 3)), () {
+      if (mounted && _gameActive && _opponentPuzzlesSolved < _currentPuzzleIndex) {
+        setState(() {
+          _opponentPuzzlesSolved++;
+        });
+      }
+    });
   }
 
   void _onIncorrectSolution() {
@@ -153,8 +222,8 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
         '/match-summary',
         arguments: {
           'isWinner': _isPlayerWinner,
-          'playerScore': _gameData['playerScore'],
-          'opponentScore': _gameData['opponentScore'],
+          'playerScore': _playerPuzzlesSolved * 500,
+          'opponentScore': _opponentPuzzlesSolved * 500,
           'solveTime': 120 - _remainingSeconds,
           'xpGained': _isPlayerWinner ? 125 : 25,
           'eloChange': _isPlayerWinner ? 18 : -12,
@@ -203,18 +272,18 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
                   // Players Info
                   _buildPlayersInfo(),
 
-                  const SizedBox(height: AppTheme.spacing3),
+                  const SizedBox(height: AppTheme.spacing2),
 
                   // Cipher Display
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(AppTheme.spacing3),
+                      padding: const EdgeInsets.all(AppTheme.spacing2),
                       child: Column(
                         children: [
                           _buildCipherCard(),
-                          const SizedBox(height: AppTheme.spacing3),
+                          const SizedBox(height: AppTheme.spacing2),
                           _buildSolutionInput(),
-                          const SizedBox(height: AppTheme.spacing3),
+                          const SizedBox(height: AppTheme.spacing2),
                           _buildHintCard(),
                         ],
                       ),
@@ -332,28 +401,39 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
             child: _buildPlayerCard(
               _gameData['playerName'],
               _gameData['playerElo'],
-              _gameData['playerScore'],
+              _playerPuzzlesSolved,
               AppTheme.cyberBlue,
               true,
             ),
           ),
 
-          // VS Indicator
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacing2),
-            padding: const EdgeInsets.all(AppTheme.spacing1),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppTheme.primaryGradient,
-            ),
-            child: const Text(
-              'VS',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
+          // VS Indicator with progress
+          Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacing2),
+                padding: const EdgeInsets.all(AppTheme.spacing1),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.primaryGradient,
+                ),
+                child: const Text(
+                  'VS',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 4),
+              Text(
+                'Puzzle ${_currentPuzzleIndex + 1}/3',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+              ),
+            ],
           ),
 
           // Opponent
@@ -361,7 +441,7 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
             child: _buildPlayerCard(
               _gameData['opponentName'],
               _gameData['opponentElo'],
-              _gameData['opponentScore'],
+              _opponentPuzzlesSolved,
               AppTheme.neonPurple,
               false,
             ),
@@ -415,7 +495,7 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
 
           const SizedBox(height: AppTheme.spacing1),
 
-          // Score
+          // Puzzles Solved
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: AppTheme.spacing1,
@@ -426,7 +506,7 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
             ),
             child: Text(
-              '$score pts',
+              '$score/3 Solved',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: color,
                     fontWeight: FontWeight.w700,
@@ -439,6 +519,8 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
   }
 
   Widget _buildCipherCard() {
+    final currentPuzzle = _puzzles[_currentPuzzleIndex];
+
     return GlowCard(
       glowVariant: GlowCardVariant.success,
       child: Column(
@@ -457,7 +539,7 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
                   borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 ),
                 child: Text(
-                  _gameData['cipherType'],
+                  currentPuzzle['cipherType'],
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: Colors.black,
                         fontWeight: FontWeight.w900,
@@ -471,17 +553,17 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.getDifficultyColor(_gameData['difficulty'])
+                  color: AppTheme.getDifficultyColor(currentPuzzle['difficulty'])
                       .withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   border: Border.all(
-                    color: AppTheme.getDifficultyColor(_gameData['difficulty']),
+                    color: AppTheme.getDifficultyColor(currentPuzzle['difficulty']),
                   ),
                 ),
                 child: Text(
-                  'Difficulty ${_gameData['difficulty']}',
+                  'Difficulty ${currentPuzzle['difficulty']}',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.getDifficultyColor(_gameData['difficulty']),
+                        color: AppTheme.getDifficultyColor(currentPuzzle['difficulty']),
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -512,7 +594,7 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
               ),
             ),
             child: SelectableText(
-              _gameData['encryptedText'],
+              currentPuzzle['encryptedText'],
               style: AppTheme.monoStyleLarge,
               textAlign: TextAlign.center,
             ),
@@ -554,11 +636,13 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
   }
 
   Widget _buildHintCard() {
+    final currentPuzzle = _puzzles[_currentPuzzleIndex];
+
     return GlowCard(
       glowVariant: GlowCardVariant.none,
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.lightbulb_outline,
             color: AppTheme.electricYellow,
             size: 24,
@@ -577,7 +661,7 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _gameData['hint'],
+                  currentPuzzle['hint'],
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

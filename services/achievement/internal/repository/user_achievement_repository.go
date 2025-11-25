@@ -22,11 +22,11 @@ type UserAchievementRepository interface {
 }
 
 type userAchievementRepository struct {
-	db  *db.Database
+	db  *db.DB
 	log *logger.Logger
 }
 
-func NewUserAchievementRepository(database *db.Database, log *logger.Logger) UserAchievementRepository {
+func NewUserAchievementRepository(database *db.DB, log *logger.Logger) UserAchievementRepository {
 	return &userAchievementRepository{
 		db:  database,
 		log: log,
@@ -42,7 +42,7 @@ func (r *userAchievementRepository) Create(ctx context.Context, userAchievement 
 		RETURNING created_at, updated_at
 	`
 
-	err := r.db.Pool.QueryRow(
+	err := r.db.QueryRowContext(
 		ctx,
 		query,
 		userAchievement.ID,
@@ -72,7 +72,7 @@ func (r *userAchievementRepository) GetByUserID(ctx context.Context, userID stri
 		ORDER BY unlocked DESC, updated_at DESC
 	`
 
-	rows, err := r.db.Pool.Query(ctx, query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		r.log.Error("Failed to get user achievements", map[string]interface{}{
 			"error":   err.Error(),
@@ -104,6 +104,13 @@ func (r *userAchievementRepository) GetByUserID(ctx context.Context, userID stri
 		userAchievements = append(userAchievements, ua)
 	}
 
+	if err := rows.Err(); err != nil {
+		r.log.Error("Error iterating user achievements", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return nil, fmt.Errorf("error iterating user achievements: %w", err)
+	}
+
 	return userAchievements, nil
 }
 
@@ -115,7 +122,7 @@ func (r *userAchievementRepository) GetByUserAndAchievement(ctx context.Context,
 	`
 
 	ua := &internal.UserAchievement{}
-	err := r.db.Pool.QueryRow(ctx, query, userID, achievementID).Scan(
+	err := r.db.QueryRowContext(ctx, query, userID, achievementID).Scan(
 		&ua.ID,
 		&ua.UserID,
 		&ua.AchievementID,
@@ -147,16 +154,9 @@ func (r *userAchievementRepository) UpdateProgress(ctx context.Context, userID, 
 		UPDATE user_achievements
 		SET progress = $1, updated_at = NOW()
 		WHERE user_id = $2 AND achievement_id = $3
-		RETURNING id
 	`
 
-	var id string
-	err := r.db.Pool.QueryRow(ctx, query, progress, userID, achievementID).Scan(&id)
-
-	if err == sql.ErrNoRows {
-		return fmt.Errorf("user achievement not found")
-	}
-
+	result, err := r.db.ExecContext(ctx, query, progress, userID, achievementID)
 	if err != nil {
 		r.log.Error("Failed to update progress", map[string]interface{}{
 			"error":          err.Error(),
@@ -165,6 +165,18 @@ func (r *userAchievementRepository) UpdateProgress(ctx context.Context, userID, 
 			"progress":       progress,
 		})
 		return fmt.Errorf("failed to update progress: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		r.log.Error("Failed to check rows affected", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user achievement not found")
 	}
 
 	r.log.Info("Achievement progress updated", map[string]interface{}{
@@ -181,16 +193,9 @@ func (r *userAchievementRepository) UnlockAchievement(ctx context.Context, userI
 		UPDATE user_achievements
 		SET unlocked = true, unlocked_at = NOW(), updated_at = NOW()
 		WHERE user_id = $1 AND achievement_id = $2
-		RETURNING id
 	`
 
-	var id string
-	err := r.db.Pool.QueryRow(ctx, query, userID, achievementID).Scan(&id)
-
-	if err == sql.ErrNoRows {
-		return fmt.Errorf("user achievement not found")
-	}
-
+	result, err := r.db.ExecContext(ctx, query, userID, achievementID)
 	if err != nil {
 		r.log.Error("Failed to unlock achievement", map[string]interface{}{
 			"error":          err.Error(),
@@ -198,6 +203,18 @@ func (r *userAchievementRepository) UnlockAchievement(ctx context.Context, userI
 			"achievement_id": achievementID,
 		})
 		return fmt.Errorf("failed to unlock achievement: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		r.log.Error("Failed to check rows affected", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user achievement not found")
 	}
 
 	r.log.Info("Achievement unlocked", map[string]interface{}{
@@ -224,7 +241,7 @@ func (r *userAchievementRepository) GetUserStats(ctx context.Context, userID str
 	`
 
 	stats := &internal.UserAchievementStats{UserID: userID}
-	err := r.db.Pool.QueryRow(ctx, query, userID).Scan(
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
 		&stats.TotalAchievements,
 		&stats.UnlockedCount,
 		&stats.TotalXPEarned,
@@ -269,7 +286,7 @@ func (r *userAchievementRepository) GetUserAchievementsWithProgress(ctx context.
 			a.name ASC
 	`
 
-	rows, err := r.db.Pool.Query(ctx, query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		r.log.Error("Failed to get user achievements with progress", map[string]interface{}{
 			"error":   err.Error(),
@@ -304,6 +321,13 @@ func (r *userAchievementRepository) GetUserAchievementsWithProgress(ctx context.
 			continue
 		}
 		achievements = append(achievements, awp)
+	}
+
+	if err := rows.Err(); err != nil {
+		r.log.Error("Error iterating achievements with progress", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return nil, fmt.Errorf("error iterating achievements with progress: %w", err)
 	}
 
 	return achievements, nil
