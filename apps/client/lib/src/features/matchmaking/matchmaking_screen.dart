@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cyberpunk_button.dart';
 import '../../widgets/glow_card.dart';
+import '../../services/matchmaker_service.dart';
 
 class MatchmakingScreen extends StatefulWidget {
   const MatchmakingScreen({Key? key}) : super(key: key);
@@ -54,7 +55,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacing3),
+            padding: const EdgeInsets.all(AppTheme.spacing2),
             child: Column(
               children: [
                 // Game Mode Selection
@@ -62,7 +63,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                   child: ListView.separated(
                     itemCount: _gameModes.length,
                     separatorBuilder: (context, index) =>
-                        const SizedBox(height: AppTheme.spacing2),
+                        const SizedBox(height: AppTheme.spacing1),
                     itemBuilder: (context, index) {
                       final mode = _gameModes[index];
                       final isSelected = _selectedMode == mode['id'];
@@ -176,61 +177,81 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                   ),
                 ),
 
-                const SizedBox(height: AppTheme.spacing3),
+                const SizedBox(height: AppTheme.spacing2),
 
                 // Current ELO Display (for ranked mode)
                 if (_selectedMode == 'RANKED_1V1')
-                  GlowCard(
-                    glowVariant: GlowCardVariant.none,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.leaderboard,
-                              color: AppTheme.cyberBlue,
-                            ),
-                            const SizedBox(width: AppTheme.spacing1),
-                            Text(
-                              'Current Rating',
-                              style:
-                                  Theme.of(context).textTheme.bodyLarge,
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '1650 ELO',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppTheme.spacing1),
+                    child: GlowCard(
+                      glowVariant: GlowCardVariant.none,
+                      padding: const EdgeInsets.all(AppTheme.spacing2),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.leaderboard,
                                 color: AppTheme.cyberBlue,
-                                fontWeight: FontWeight.w900,
+                                size: 20,
                               ),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(),
-
-                const SizedBox(height: AppTheme.spacing2),
+                              const SizedBox(width: AppTheme.spacing1),
+                              Text(
+                                'Current Rating',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '1650 ELO',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  color: AppTheme.cyberBlue,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(),
+                  ),
 
                 // Start Matchmaking Button
                 CyberpunkButton(
                   label: _getButtonLabel(),
-                  onPressed: () {
+                  onPressed: () async {
                     HapticFeedback.heavyImpact();
-                    Navigator.pushNamed(
-                      context,
-                      '/queue',
-                      arguments: {'mode': _selectedMode},
+
+                    // Join matchmaking queue
+                    final result = await MatchmakerService.joinQueue(
+                      gameMode: _selectedMode,
                     );
+
+                    if (context.mounted) {
+                      if (result['success']) {
+                        Navigator.pushNamed(
+                          context,
+                          '/queue',
+                          arguments: {'mode': _selectedMode},
+                        );
+                      } else {
+                        // Show error message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result['message'] ?? 'Failed to join queue'),
+                            backgroundColor: AppTheme.neonRed,
+                          ),
+                        );
+                      }
+                    }
                   },
                   variant: CyberpunkButtonVariant.primary,
                   icon: Icons.play_arrow,
                   fullWidth: true,
                   padding: const EdgeInsets.symmetric(
-                      vertical: AppTheme.spacing3),
+                      vertical: AppTheme.spacing2),
                 ),
               ],
             ),

@@ -10,19 +10,40 @@
 
 ## ⚡ Quick Start
 
+### Linux/macOS:
 ```bash
 # 1. Start infrastructure
 make docker-up
 
 # 2. Run services (in separate terminals)
 make dev-auth        # Auth Service
-make dev-puzzle      # Puzzle Engine  
+make dev-puzzle      # Puzzle Engine
 make dev-matchmaker  # Matchmaker
 
 # 3. Test it works
 curl http://localhost:8080/health  # Auth
 curl http://localhost:8082/health  # Puzzle
 curl http://localhost:8081/health  # Matchmaker
+```
+
+### Windows:
+**Note:** Docker and Make are not reliably supported on Windows for this project.
+
+```bash
+# 1. Start infrastructure manually
+# Install PostgreSQL, Redis, and RabbitMQ locally
+# Or use WSL2 with Docker
+
+# 2. Run services (in separate terminals)
+cd services/auth && go run main.go
+cd services/puzzle_engine && go run main.go
+cd services/matchmaker && go run main.go
+cd services/achievement && go run main.go
+
+# 3. Run Flutter client
+cd apps/client && flutter run -d chrome
+
+# Note: Chrome --no-sandbox warning can be ignored (Flutter limitation on Windows)
 ```
 
 **All services should respond with `{"status":"healthy"}`**
@@ -104,21 +125,42 @@ curl "http://localhost:8081/api/v1/matchmaker/leaderboard?limit=50"
 ### Prerequisites
 - Go 1.23+
 - Flutter 3.0+
-- Docker & Docker Compose
+- PostgreSQL 15+
+- Redis 7+
+- RabbitMQ 3.12+
 
-### Setup
+**Linux/macOS also needs:**
+- Docker & Docker Compose
+- Make
+
+### Setup (Linux/macOS)
 ```bash
 make setup      # Install everything
 make docker-up  # Start services
 ```
 
-### Useful Commands
+### Setup (Windows)
+1. Install PostgreSQL, Redis, and RabbitMQ manually
+2. Configure `.env` file with connection strings
+3. Run each service with `go run main.go`
+4. Run Flutter with `flutter run -d chrome`
+
+### Useful Commands (Linux/macOS)
 ```bash
 make help            # Show all commands
 make build           # Build all services
 make test            # Run tests
 make db-psql         # Connect to database
 make docker-logs     # View service logs
+```
+
+### Useful Commands (Windows)
+```bash
+go build ./services/auth        # Build auth service
+go build ./services/puzzle_engine
+go build ./services/matchmaker
+go build ./services/achievement
+flutter build web              # Build Flutter web app
 ```
 
 ---

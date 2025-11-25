@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cyberpunk_button.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -38,16 +39,28 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // TODO: Implement actual login with AuthService
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+      // Call AuthService to login
+      final result = await AuthService.login(
+        username: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
       if (!mounted) return;
 
-      // Navigate to main menu on success
-      Navigator.pushReplacementNamed(context, '/menu');
+      if (result['success']) {
+        // Navigate to main menu on success
+        HapticFeedback.heavyImpact();
+        Navigator.pushReplacementNamed(context, '/menu');
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Login failed';
+          _isLoading = false;
+        });
+        HapticFeedback.mediumImpact();
+      }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Invalid email or password';
+        _errorMessage = 'Network error: Unable to connect to server';
         _isLoading = false;
       });
       HapticFeedback.heavyImpact();

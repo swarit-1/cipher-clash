@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cyberpunk_button.dart';
+import '../../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -90,16 +91,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // TODO: Implement actual registration with AuthService
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+      // Call AuthService to register
+      final result = await AuthService.register(
+        username: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
       if (!mounted) return;
 
-      // Navigate to main menu on success
-      Navigator.pushReplacementNamed(context, '/menu');
+      if (result['success']) {
+        // Navigate to main menu on success
+        HapticFeedback.heavyImpact();
+        Navigator.pushReplacementNamed(context, '/menu');
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Registration failed';
+          _isLoading = false;
+        });
+        HapticFeedback.mediumImpact();
+      }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Registration failed. Please try again.';
+        _errorMessage = 'Network error: Unable to connect to server';
         _isLoading = false;
       });
       HapticFeedback.heavyImpact();
