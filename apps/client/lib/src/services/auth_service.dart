@@ -93,6 +93,18 @@ class AuthService {
     _username = null;
   }
 
+  // Set mock auth data for development (bypasses backend)
+  static void setDevMockAuth({
+    required String accessToken,
+    required String userId,
+    required String username,
+  }) {
+    _accessToken = accessToken;
+    _refreshToken = 'dev-mock-refresh-token';
+    _userId = userId;
+    _username = username;
+  }
+
   // Get authorization header
   static Map<String, String> getAuthHeaders() {
     if (_accessToken == null) {

@@ -475,37 +475,65 @@ class _MainMenuScreenState extends State<MainMenuScreen>
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: AppTheme.spacing2),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppTheme.spacing2,
-          crossAxisSpacing: AppTheme.spacing2,
-          childAspectRatio: 1.5,
+        Column(
           children: [
-            _buildActionCard(
-              'Profile',
-              Icons.person_outline,
-              AppTheme.cyberBlue,
-              () => Navigator.pushNamed(context, '/profile'),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionCard(
+                    'Tutorial',
+                    Icons.school_outlined,
+                    AppTheme.electricYellow,
+                    () => Navigator.pushNamed(context, '/tutorial'),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing2),
+                Expanded(
+                  child: _buildActionCard(
+                    'Profile',
+                    Icons.person_outline,
+                    AppTheme.cyberBlue,
+                    () => Navigator.pushNamed(context, '/profile'),
+                  ),
+                ),
+              ],
             ),
-            _buildActionCard(
-              'Leaderboard',
-              Icons.leaderboard,
-              AppTheme.neonPurple,
-              () => Navigator.pushNamed(context, '/leaderboard'),
+            const SizedBox(height: AppTheme.spacing2),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionCard(
+                    'Leaderboard',
+                    Icons.leaderboard,
+                    AppTheme.neonPurple,
+                    () => Navigator.pushNamed(context, '/leaderboard'),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing2),
+                Expanded(
+                  child: _buildActionCard(
+                    'Achievements',
+                    Icons.emoji_events_outlined,
+                    AppTheme.electricGreen,
+                    () => Navigator.pushNamed(context, '/achievements'),
+                  ),
+                ),
+              ],
             ),
-            _buildActionCard(
-              'Achievements',
-              Icons.emoji_events_outlined,
-              AppTheme.electricGreen,
-              () => Navigator.pushNamed(context, '/achievements'),
-            ),
-            _buildActionCard(
-              'Social',
-              Icons.people_outline,
-              AppTheme.electricYellow,
-              () => Navigator.pushNamed(context, '/social'),
+            const SizedBox(height: AppTheme.spacing2),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionCard(
+                    'Social',
+                    Icons.people_outline,
+                    AppTheme.neonRed,
+                    () => Navigator.pushNamed(context, '/social'),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing2),
+                const Expanded(child: SizedBox()),
+              ],
             ),
           ],
         ),
@@ -525,18 +553,22 @@ class _MainMenuScreenState extends State<MainMenuScreen>
         HapticFeedback.selectionClick();
         onTap();
       },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: AppTheme.spacing1),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: color,
-                ),
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spacing2),
+        height: 100,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: AppTheme.spacing1),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: color,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }

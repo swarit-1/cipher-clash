@@ -69,6 +69,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _skipForDev() {
     HapticFeedback.heavyImpact();
+    // Set mock auth data for dev mode
+    AuthService.setDevMockAuth(
+      accessToken: 'dev-mock-token',
+      userId: 'dev-user-123',
+      username: 'DevUser',
+    );
     Navigator.pushReplacementNamed(context, '/menu');
   }
 
