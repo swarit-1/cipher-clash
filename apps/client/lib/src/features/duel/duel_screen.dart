@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/terminal_theme.dart';
+import '../../services/api_config.dart';
 import '../game/game_service.dart';
 
 class DuelScreen extends ConsumerStatefulWidget {
@@ -28,7 +29,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final gameService = ref.read(gameServiceProvider);
-      gameService.connect('ws://localhost:8080/ws');
+      gameService.connect(ApiConfig.gameWebSocketUrl);
 
       // Listen for updates
       gameService.gameEvents.listen((event) {
