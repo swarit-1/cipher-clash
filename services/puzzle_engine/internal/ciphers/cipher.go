@@ -25,6 +25,10 @@ const (
 	TypeAtbash       = "ATBASH"
 	TypeBookCipher   = "BOOK_CIPHER"
 	TypeRSASimple    = "RSA_SIMPLE"
+	// V2.0 New Ciphers
+	TypeAffine       = "AFFINE"
+	TypeAutokey      = "AUTOKEY"
+	TypeEnigmaLite   = "ENIGMA_LITE"
 )
 
 // GetCipher returns a cipher by type
@@ -60,6 +64,12 @@ func GetCipher(cipherType string) Cipher {
 		return &BookCipherImpl{}
 	case TypeRSASimple:
 		return &RSASimpleCipher{}
+	case TypeAffine:
+		return &AffineCipher{}
+	case TypeAutokey:
+		return &AutokeyCipher{}
+	case TypeEnigmaLite:
+		return &EnigmaLiteCipher{}
 	default:
 		return nil
 	}
@@ -72,5 +82,6 @@ func GetAllCipherTypes() []string {
 		TypeSubstitution, TypeTransposition, TypeXOR, TypeBase64,
 		TypeMorse, TypeBinary, TypeHexadecimal, TypeROT13,
 		TypeAtbash, TypeBookCipher, TypeRSASimple,
+		TypeAffine, TypeAutokey, TypeEnigmaLite,
 	}
 }

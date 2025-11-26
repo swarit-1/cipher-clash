@@ -106,4 +106,30 @@ enum CipherType {
   ATBASH = 13;
   BOOK_CIPHER = 14;
   RSA_SIMPLE = 15;
+  // New V2.0 Ciphers
+  AFFINE = 16;
+  AUTOKEY = 17;
+  ENIGMA_LITE = 18;
+}
+
+// Multi-stage puzzle support
+message PuzzleChain {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int32 total_stages = 4;
+  int32 difficulty = 5;
+  bool is_story_mode = 6;
+  string category = 7;
+  repeated PuzzleStage stages = 8;
+}
+
+message PuzzleStage {
+  string id = 1;
+  string chain_id = 2;
+  int32 stage_number = 3;
+  Puzzle puzzle = 4;
+  int32 time_limit_seconds = 5;
+  string hint_text = 6;
+  string success_message = 7;
 }

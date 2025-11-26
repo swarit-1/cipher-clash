@@ -718,3 +718,278 @@ func modInverse(a, m int64) int64 {
 	}
 	return 1
 }
+
+// ============================================================================
+// 16. AFFINE CIPHER (V2.0)
+// ============================================================================
+// Affine cipher uses: E(x) = (ax + b) mod 26
+// where 'a' must be coprime with 26, 'b' is the shift
+
+type AffineCipher struct{}
+
+func (a *AffineCipher) Name() string { return TypeAffine }
+
+func (a *AffineCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
+	keyA := int(config["a"].(float64))
+	keyB := int(config["b"].(float64))
+
+	result := ""
+	for _, char := range plaintext {
+		if char >= 'A' && char <= 'Z' {
+			x := int(char - 'A')
+			encrypted := (keyA*x + keyB) % 26
+			result += string(rune(encrypted + 'A'))
+		} else if char >= 'a' && char <= 'z' {
+			x := int(char - 'a')
+			encrypted := (keyA*x + keyB) % 26
+			result += string(rune(encrypted + 'a'))
+		} else {
+			result += string(char)
+		}
+	}
+	return result, nil
+}
+
+func (a *AffineCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
+	keyA := int(config["a"].(float64))
+	keyB := int(config["b"].(float64))
+
+	// Find multiplicative inverse of a mod 26
+	aInverse := int(modInverse(int64(keyA), 26))
+
+	result := ""
+	for _, char := range ciphertext {
+		if char >= 'A' && char <= 'Z' {
+			y := int(char - 'A')
+			decrypted := (aInverse * (y - keyB + 26)) % 26
+			result += string(rune(decrypted + 'A'))
+		} else if char >= 'a' && char <= 'z' {
+			y := int(char - 'a')
+			decrypted := (aInverse * (y - keyB + 26)) % 26
+			result += string(rune(decrypted + 'a'))
+		} else {
+			result += string(char)
+		}
+	}
+	return result, nil
+}
+
+func (a *AffineCipher) GenerateKey(difficulty int) map[string]interface{} {
+	// Valid values for 'a' that are coprime with 26: 1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25
+	validA := []int{3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25}
+	keyA := validA[difficulty%len(validA)]
+	keyB := (difficulty * 5) % 26
+
+	return map[string]interface{}{
+		"a": keyA,
+		"b": keyB,
+	}
+}
+
+// ============================================================================
+// 17. AUTOKEY CIPHER (V2.0)
+// ============================================================================
+// Similar to Vigenère but uses the plaintext itself as part of the key
+
+type AutokeyCipher struct{}
+
+func (a *AutokeyCipher) Name() string { return TypeAutokey }
+
+func (a *AutokeyCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
+	primer := strings.ToUpper(config["primer"].(string))
+
+	result := ""
+	keystream := primer
+	keyIndex := 0
+
+	for _, char := range plaintext {
+		if char >= 'A' && char <= 'Z' {
+			if keyIndex >= len(keystream) {
+				keystream += string(char)
+			}
+			shift := int(keystream[keyIndex] - 'A')
+			encrypted := (int(char-'A') + shift) % 26
+			result += string(rune(encrypted + 'A'))
+			keyIndex++
+		} else if char >= 'a' && char <= 'z' {
+			upperChar := char - 'a' + 'A'
+			if keyIndex >= len(keystream) {
+				keystream += string(upperChar)
+			}
+			shift := int(keystream[keyIndex] - 'A')
+			encrypted := (int(upperChar-'A') + shift) % 26
+			result += string(rune(encrypted + 'a'))
+			keyIndex++
+		} else {
+			result += string(char)
+		}
+	}
+	return result, nil
+}
+
+func (a *AutokeyCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
+	primer := strings.ToUpper(config["primer"].(string))
+
+	result := ""
+	keystream := primer
+	keyIndex := 0
+
+	for _, char := range ciphertext {
+		if char >= 'A' && char <= 'Z' {
+			shift := int(keystream[keyIndex] - 'A')
+			decrypted := (int(char-'A') - shift + 26) % 26
+			plainChar := rune(decrypted + 'A')
+			result += string(plainChar)
+			keystream += string(plainChar)
+			keyIndex++
+		} else if char >= 'a' && char <= 'z' {
+			shift := int(keystream[keyIndex] - 'A')
+			decrypted := (int(char-'a') - shift + 26) % 26
+			plainChar := rune(decrypted + 'a')
+			result += string(plainChar)
+			keystream += string(rune(decrypted + 'A'))
+			keyIndex++
+		} else {
+			result += string(char)
+		}
+	}
+	return result, nil
+}
+
+func (a *AutokeyCipher) GenerateKey(difficulty int) map[string]interface{} {
+	primerLength := 3 + (difficulty / 3)
+	primer := ""
+	for i := 0; i < primerLength; i++ {
+		primer += string(rune('A' + randInt(26)))
+	}
+
+	return map[string]interface{}{
+		"primer": primer,
+	}
+}
+
+// ============================================================================
+// 18. ENIGMA-LITE CIPHER (V2.0)
+// ============================================================================
+// Simplified Enigma-style rotor cipher with stepping rotors
+
+type EnigmaLiteCipher struct{}
+
+func (e *EnigmaLiteCipher) Name() string { return TypeEnigmaLite }
+
+func (e *EnigmaLiteCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
+	rotor1 := config["rotor1"].(string)
+	rotor2 := config["rotor2"].(string)
+	rotor3 := config["rotor3"].(string)
+	reflector := config["reflector"].(string)
+
+	pos1 := int(config["pos1"].(float64))
+	pos2 := int(config["pos2"].(float64))
+	pos3 := int(config["pos3"].(float64))
+
+	result := ""
+
+	for _, char := range plaintext {
+		if char >= 'A' && char <= 'Z' {
+			encrypted := enigmaProcess(char, rotor1, rotor2, rotor3, reflector, &pos1, &pos2, &pos3)
+			result += string(encrypted)
+		} else if char >= 'a' && char <= 'z' {
+			upperChar := char - 'a' + 'A'
+			encrypted := enigmaProcess(upperChar, rotor1, rotor2, rotor3, reflector, &pos1, &pos2, &pos3)
+			result += string(encrypted - 'A' + 'a')
+		} else {
+			result += string(char)
+		}
+	}
+
+	return result, nil
+}
+
+func (e *EnigmaLiteCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
+	// Enigma is reciprocal - encryption = decryption with same settings
+	return e.Encrypt(ciphertext, config)
+}
+
+func (e *EnigmaLiteCipher) GenerateKey(difficulty int) map[string]interface{} {
+	// Predefined rotor wirings (simplified)
+	rotorWirings := []string{
+		"EKMFLGDQVZNTOWYHXUSPAIBRCJ",
+		"AJDKSIRUXBLHWTMCQGZNPYFVOE",
+		"BDFHJLCPRTXVZNYEIWGAKMUSQO",
+		"ESOVPZJAYQUIRHXLNFTGKDCMWB",
+		"VZBRGITYUPSDNHLXAWMJQOFECK",
+	}
+
+	reflectorWiring := "YRUHQSLDPXNGOKMIEBFZCWVJAT"
+
+	rotor1Index := difficulty % len(rotorWirings)
+	rotor2Index := (difficulty + 1) % len(rotorWirings)
+	rotor3Index := (difficulty + 2) % len(rotorWirings)
+
+	return map[string]interface{}{
+		"rotor1":    rotorWirings[rotor1Index],
+		"rotor2":    rotorWirings[rotor2Index],
+		"rotor3":    rotorWirings[rotor3Index],
+		"reflector": reflectorWiring,
+		"pos1":      difficulty % 26,
+		"pos2":      (difficulty * 3) % 26,
+		"pos3":      (difficulty * 7) % 26,
+	}
+}
+
+func enigmaProcess(char rune, rotor1, rotor2, rotor3, reflector string, pos1, pos2, pos3 *int) rune {
+	// Step rotors (right to left stepping)
+	*pos1 = (*pos1 + 1) % 26
+	if *pos1 == 0 {
+		*pos2 = (*pos2 + 1) % 26
+		if *pos2 == 0 {
+			*pos3 = (*pos3 + 1) % 26
+		}
+	}
+
+	// Forward through rotors
+	index := int(char - 'A')
+
+	// Rotor 1
+	index = (index + *pos1) % 26
+	index = int(rotor1[index] - 'A')
+	index = (index - *pos1 + 26) % 26
+
+	// Rotor 2
+	index = (index + *pos2) % 26
+	index = int(rotor2[index] - 'A')
+	index = (index - *pos2 + 26) % 26
+
+	// Rotor 3
+	index = (index + *pos3) % 26
+	index = int(rotor3[index] - 'A')
+	index = (index - *pos3 + 26) % 26
+
+	// Reflector
+	index = int(reflector[index] - 'A')
+
+	// Backward through rotors (inverse)
+	index = (index + *pos3) % 26
+	index = enigmaInverseRotor(rotor3, index)
+	index = (index - *pos3 + 26) % 26
+
+	index = (index + *pos2) % 26
+	index = enigmaInverseRotor(rotor2, index)
+	index = (index - *pos2 + 26) % 26
+
+	index = (index + *pos1) % 26
+	index = enigmaInverseRotor(rotor1, index)
+	index = (index - *pos1 + 26) % 26
+
+	return rune(index + 'A')
+}
+
+func enigmaInverseRotor(rotor string, output int) int {
+	target := rune(output + 'A')
+	for i, char := range rotor {
+		if char == target {
+			return i
+		}
+	}
+	return 0
+}

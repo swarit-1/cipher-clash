@@ -1,0 +1,234 @@
+syntax = "proto3";
+
+package social;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/social";
+
+// Social Service - Friends, invites, spectating
+service SocialService {
+  // Friend management
+  rpc SendFriendRequest(SendFriendRequestRequest) returns (SendFriendRequestResponse);
+  rpc AcceptFriendRequest(AcceptFriendRequestRequest) returns (AcceptFriendRequestResponse);
+  rpc DeclineFriendRequest(DeclineFriendRequestRequest) returns (DeclineFriendRequestResponse);
+  rpc RemoveFriend(RemoveFriendRequest) returns (RemoveFriendResponse);
+  rpc GetFriends(GetFriendsRequest) returns (GetFriendsResponse);
+  rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+
+  // Match invitations
+  rpc SendMatchInvite(SendMatchInviteRequest) returns (SendMatchInviteResponse);
+  rpc RespondToInvite(RespondToInviteRequest) returns (RespondToInviteResponse);
+  rpc GetPendingInvites(GetPendingInvitesRequest) returns (GetPendingInvitesResponse);
+
+  // Spectator mode
+  rpc JoinAsSpectator(JoinAsSpectatorRequest) returns (JoinAsSpectatorResponse);
+  rpc LeaveSpectating(LeaveSpectatingRequest) returns (LeaveSpectatingResponse);
+  rpc GetSpectators(GetSpectatorsRequest) returns (GetSpectatorsResponse);
+  rpc GetSpectableMatches(GetSpectableMatchesRequest) returns (GetSpectableMatchesResponse);
+}
+
+// Friend Requests
+message SendFriendRequestRequest {
+  string user_id = 1;
+  string target_username = 2; // Can search by username or user_id
+  string target_user_id = 3;
+}
+
+message SendFriendRequestResponse {
+  bool success = 1;
+  Friendship friendship = 2;
+}
+
+message AcceptFriendRequestRequest {
+  string user_id = 1;
+  string friendship_id = 2;
+}
+
+message AcceptFriendRequestResponse {
+  bool success = 1;
+  Friendship friendship = 2;
+}
+
+message DeclineFriendRequestRequest {
+  string user_id = 1;
+  string friendship_id = 2;
+}
+
+message DeclineFriendRequestResponse {
+  bool success = 1;
+}
+
+message RemoveFriendRequest {
+  string user_id = 1;
+  string friend_id = 2;
+}
+
+message RemoveFriendResponse {
+  bool success = 1;
+}
+
+message GetFriendsRequest {
+  string user_id = 1;
+  string status = 2; // accepted, pending, blocked (default: accepted)
+}
+
+message GetFriendsResponse {
+  repeated FriendProfile friends = 1;
+}
+
+message GetFriendRequestsRequest {
+  string user_id = 1;
+}
+
+message GetFriendRequestsResponse {
+  repeated Friendship incoming = 1;
+  repeated Friendship outgoing = 2;
+}
+
+message BlockUserRequest {
+  string user_id = 1;
+  string target_user_id = 2;
+}
+
+message BlockUserResponse {
+  bool success = 1;
+}
+
+// Match Invitations
+message SendMatchInviteRequest {
+  string sender_id = 1;
+  string recipient_id = 2;
+  string game_mode = 3;
+  string message = 4;
+}
+
+message SendMatchInviteResponse {
+  bool success = 1;
+  MatchInvitation invitation = 2;
+}
+
+message RespondToInviteRequest {
+  string user_id = 1;
+  string invitation_id = 2;
+  bool accepted = 3;
+}
+
+message RespondToInviteResponse {
+  bool success = 1;
+  string match_id = 2; // If accepted
+}
+
+message GetPendingInvitesRequest {
+  string user_id = 1;
+}
+
+message GetPendingInvitesResponse {
+  repeated MatchInvitation invitations = 1;
+}
+
+// Spectator Mode
+message JoinAsSpectatorRequest {
+  string user_id = 1;
+  string match_id = 2;
+}
+
+message JoinAsSpectatorResponse {
+  bool success = 1;
+  string websocket_url = 2;
+  SpectatorSession session = 3;
+}
+
+message LeaveSpectatingRequest {
+  string user_id = 1;
+  string match_id = 2;
+}
+
+message LeaveSpectatingResponse {
+  bool success = 1;
+}
+
+message GetSpectatorsRequest {
+  string match_id = 1;
+}
+
+message GetSpectatorsResponse {
+  repeated SpectatorProfile spectators = 1;
+}
+
+message GetSpectableMatchesRequest {
+  string user_id = 1; // Get matches from friends
+  int32 limit = 2;
+}
+
+message GetSpectableMatchesResponse {
+  repeated SpectableMatch matches = 1;
+}
+
+// Models
+message Friendship {
+  string id = 1;
+  string user_id = 2;
+  string friend_id = 3;
+  string status = 4; // pending, accepted, blocked
+  string requester_id = 5;
+  string created_at = 6;
+  string accepted_at = 7;
+}
+
+message FriendProfile {
+  string user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  int32 elo_rating = 5;
+  string rank_tier = 6;
+  bool is_online = 7;
+  string current_status = 8; // in_match, in_queue, idle
+  string friendship_id = 9;
+  string friends_since = 10;
+}
+
+message MatchInvitation {
+  string id = 1;
+  string sender_id = 2;
+  string sender_username = 3;
+  string recipient_id = 4;
+  string game_mode = 5;
+  string message = 6;
+  string status = 7; // pending, accepted, declined, expired
+  string created_at = 8;
+  string expires_at = 9;
+  int32 seconds_remaining = 10;
+}
+
+message SpectatorSession {
+  string id = 1;
+  string match_id = 2;
+  string spectator_id = 3;
+  string joined_at = 4;
+  bool is_active = 5;
+}
+
+message SpectatorProfile {
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string joined_at = 4;
+}
+
+message SpectableMatch {
+  string match_id = 1;
+  string game_mode = 2;
+  repeated PlayerInfo players = 3;
+  string started_at = 4;
+  int32 elapsed_seconds = 5;
+  int32 spectator_count = 6;
+  bool can_join = 7;
+}
+
+message PlayerInfo {
+  string user_id = 1;
+  string username = 2;
+  int32 elo_rating = 3;
+  int32 current_score = 4;
+}

@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+package cosmetics;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/cosmetics";
+
+// Cosmetics Service - Collection and customization system
+service CosmeticsService {
+  // Get cosmetics catalog
+  rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse);
+
+  // Get user's inventory
+  rpc GetInventory(GetInventoryRequest) returns (GetInventoryResponse);
+
+  // Purchase cosmetic
+  rpc PurchaseCosmetic(PurchaseCosmeticRequest) returns (PurchaseCosmeticResponse);
+
+  // Equip cosmetic
+  rpc EquipCosmetic(EquipCosmeticRequest) returns (EquipCosmeticResponse);
+
+  // Unequip cosmetic
+  rpc UnequipCosmetic(UnequipCosmeticRequest) returns (UnequipCosmeticResponse);
+
+  // Get user's loadout
+  rpc GetLoadout(GetLoadoutRequest) returns (GetLoadoutResponse);
+
+  // Update loadout
+  rpc UpdateLoadout(UpdateLoadoutRequest) returns (UpdateLoadoutResponse);
+
+  // Grant cosmetic (from achievement/mission)
+  rpc GrantCosmetic(GrantCosmeticRequest) returns (GrantCosmeticResponse);
+}
+
+message GetCatalogRequest {
+  string category = 1; // background, particle_effect, title, avatar_frame, cipher_skin
+  string rarity = 2; // common, rare, epic, legendary, mythic
+  bool purchasable_only = 3;
+}
+
+message GetCatalogResponse {
+  repeated Cosmetic cosmetics = 1;
+}
+
+message GetInventoryRequest {
+  string user_id = 1;
+  string category = 2; // Filter by category
+}
+
+message GetInventoryResponse {
+  repeated UserCosmetic cosmetics = 1;
+  int32 total_owned = 2;
+  int32 total_equipped = 3;
+}
+
+message PurchaseCosmeticRequest {
+  string user_id = 1;
+  string cosmetic_id = 2;
+}
+
+message PurchaseCosmeticResponse {
+  bool success = 1;
+  UserCosmetic cosmetic = 2;
+  int32 new_coin_balance = 3;
+}
+
+message EquipCosmeticRequest {
+  string user_id = 1;
+  string cosmetic_id = 2;
+}
+
+message EquipCosmeticResponse {
+  bool success = 1;
+  UserLoadout loadout = 2;
+}
+
+message UnequipCosmeticRequest {
+  string user_id = 1;
+  string category = 2;
+}
+
+message UnequipCosmeticResponse {
+  bool success = 1;
+  UserLoadout loadout = 2;
+}
+
+message GetLoadoutRequest {
+  string user_id = 1;
+}
+
+message GetLoadoutResponse {
+  UserLoadout loadout = 1;
+}
+
+message UpdateLoadoutRequest {
+  string user_id = 1;
+  string background_id = 2;
+  string particle_effect_id = 3;
+  string title_id = 4;
+  string avatar_frame_id = 5;
+}
+
+message UpdateLoadoutResponse {
+  bool success = 1;
+  UserLoadout loadout = 2;
+}
+
+message GrantCosmeticRequest {
+  string user_id = 1;
+  string cosmetic_id = 2;
+  string source = 3; // mission_reward, achievement_unlock, gift
+}
+
+message GrantCosmeticResponse {
+  bool success = 1;
+  UserCosmetic cosmetic = 2;
+}
+
+// Models
+message Cosmetic {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4; // background, particle_effect, title, avatar_frame, cipher_skin
+  string rarity = 5; // common, rare, epic, legendary, mythic
+  string asset_url = 6;
+  map<string, string> metadata = 7;
+  string unlock_requirement = 8;
+  int32 coin_cost = 9;
+  bool is_premium = 10;
+  bool is_tradable = 11;
+  bool is_active = 12;
+}
+
+message UserCosmetic {
+  string id = 1;
+  string user_id = 2;
+  string cosmetic_id = 3;
+  Cosmetic cosmetic_details = 4;
+  string acquired_at = 5;
+  bool is_equipped = 6;
+  string source = 7;
+}
+
+message UserLoadout {
+  string id = 1;
+  string user_id = 2;
+  Cosmetic background = 3;
+  Cosmetic particle_effect = 4;
+  Cosmetic title = 5;
+  Cosmetic avatar_frame = 6;
+  string updated_at = 7;
+}

@@ -255,6 +255,17 @@ class AppTheme {
       );
 
   // ========================================
+  // INDIVIDUAL TEXT STYLES (Convenience Getters)
+  // ========================================
+  static TextStyle get headingLarge => headingTextTheme.headlineLarge!;
+  static TextStyle get headingMedium => headingTextTheme.headlineMedium!;
+  static TextStyle get headingSmall => headingTextTheme.headlineSmall!;
+
+  static TextStyle get bodyLarge => bodyTextTheme.bodyLarge!;
+  static TextStyle get bodyMedium => bodyTextTheme.bodyMedium!;
+  static TextStyle get bodySmall => bodyTextTheme.bodySmall!;
+
+  // ========================================
   // THEME DATA
   // ========================================
   static ThemeData get darkTheme {

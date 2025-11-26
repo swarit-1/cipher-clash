@@ -123,3 +123,8 @@ func (l *Logger) shouldLog(level Level) bool {
 	}
 	return levels[level] >= levels[l.level]
 }
+
+// NewLogger creates a new logger instance (alias for New)
+func NewLogger(serviceName string) *Logger {
+	return New(serviceName)
+}

@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package tutorial;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/tutorial";
+
+// Tutorial Service - Manages onboarding and training
+service TutorialService {
+  // Get all available tutorial steps
+  rpc GetTutorialSteps(GetTutorialStepsRequest) returns (GetTutorialStepsResponse);
+
+  // Get user's tutorial progress
+  rpc GetUserProgress(GetUserProgressRequest) returns (GetUserProgressResponse);
+
+  // Update progress for a step
+  rpc UpdateProgress(UpdateProgressRequest) returns (UpdateProgressResponse);
+
+  // Complete a tutorial step
+  rpc CompleteStep(CompleteStepRequest) returns (CompleteStepResponse);
+
+  // Skip tutorial
+  rpc SkipTutorial(SkipTutorialRequest) returns (SkipTutorialResponse);
+
+  // Get cipher visualizer data
+  rpc GetCipherVisualization(GetCipherVisualizationRequest) returns (GetCipherVisualizationResponse);
+}
+
+message GetTutorialStepsRequest {
+  string category = 1; // Filter by category (optional)
+}
+
+message GetTutorialStepsResponse {
+  repeated TutorialStep steps = 1;
+}
+
+message GetUserProgressRequest {
+  string user_id = 1;
+}
+
+message GetUserProgressResponse {
+  repeated TutorialProgress progress = 1;
+  int32 total_steps = 2;
+  int32 completed_steps = 3;
+  float completion_percentage = 4;
+}
+
+message UpdateProgressRequest {
+  string user_id = 1;
+  string step_id = 2;
+  string status = 3; // in_progress, completed, skipped
+  int32 attempts = 4;
+  int32 hints_used = 5;
+}
+
+message UpdateProgressResponse {
+  TutorialProgress progress = 1;
+  int32 xp_earned = 2;
+}
+
+message CompleteStepRequest {
+  string user_id = 1;
+  string step_id = 2;
+  int32 attempts = 3;
+  int32 hints_used = 4;
+  int32 time_taken_ms = 5;
+}
+
+message CompleteStepResponse {
+  bool success = 1;
+  int32 xp_earned = 2;
+  TutorialStep next_step = 3;
+  bool tutorial_completed = 4;
+}
+
+message SkipTutorialRequest {
+  string user_id = 1;
+}
+
+message SkipTutorialResponse {
+  bool success = 1;
+}
+
+message GetCipherVisualizationRequest {
+  string cipher_type = 1;
+  string input_text = 2;
+  string key = 3;
+}
+
+message GetCipherVisualizationResponse {
+  repeated VisualizationStep steps = 1;
+  string final_output = 2;
+}
+
+// Models
+message TutorialStep {
+  string id = 1;
+  int32 order_index = 2;
+  string title = 3;
+  string description = 4;
+  string category = 5;
+  string cipher_type = 6;
+  int32 difficulty = 7;
+  bool required_for_completion = 8;
+  int32 xp_reward = 9;
+  string unlock_requirement = 10;
+  string instruction_text = 11;
+  string hint_text = 12;
+  string success_message = 13;
+}
+
+message TutorialProgress {
+  string id = 1;
+  string user_id = 2;
+  string step_id = 3;
+  string status = 4;
+  string completed_at = 5;
+  int32 attempts = 6;
+  int32 hints_used = 7;
+}
+
+message VisualizationStep {
+  int32 step_number = 1;
+  string description = 2;
+  string intermediate_value = 3;
+  map<string, string> metadata = 4; // Additional info for rendering
+}

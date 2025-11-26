@@ -31,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     'winRate': 63.7,
     'winStreak': 5,
     'bestWinStreak': 12,
-    'favoriteC ipher': 'Vigenere',
+    'favoriteCipher': 'Vigenere',
     'totalSolveTime': 125430, // seconds
     'fastestSolve': 18, // seconds
     'joinDate': '2024-06-15',

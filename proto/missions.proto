@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package missions;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/missions";
+
+// Missions Service - Daily/Weekly missions system
+service MissionsService {
+  // Get user's active missions
+  rpc GetActiveMissions(GetActiveMissionsRequest) returns (GetActiveMissionsResponse);
+
+  // Get available mission templates
+  rpc GetMissionTemplates(GetMissionTemplatesRequest) returns (GetMissionTemplatesResponse);
+
+  // Assign daily missions to user
+  rpc AssignDailyMissions(AssignDailyMissionsRequest) returns (AssignDailyMissionsResponse);
+
+  // Update mission progress
+  rpc UpdateMissionProgress(UpdateMissionProgressRequest) returns (UpdateMissionProgressResponse);
+
+  // Complete mission and claim rewards
+  rpc CompleteMission(CompleteMissionRequest) returns (CompleteMissionResponse);
+
+  // Abandon mission
+  rpc AbandonMission(AbandonMissionRequest) returns (AbandonMissionResponse);
+
+  // Refresh missions (once per day)
+  rpc RefreshMissions(RefreshMissionsRequest) returns (RefreshMissionsResponse);
+}
+
+message GetActiveMissionsRequest {
+  string user_id = 1;
+}
+
+message GetActiveMissionsResponse {
+  repeated UserMission missions = 1;
+  int32 refresh_available_in_seconds = 2;
+}
+
+message GetMissionTemplatesRequest {
+  string category = 1; // daily, weekly, special
+}
+
+message GetMissionTemplatesResponse {
+  repeated MissionTemplate templates = 1;
+}
+
+message AssignDailyMissionsRequest {
+  string user_id = 1;
+  int32 count = 2; // Number of missions to assign (default 5)
+}
+
+message AssignDailyMissionsResponse {
+  repeated UserMission assigned_missions = 1;
+}
+
+message UpdateMissionProgressRequest {
+  string user_id = 1;
+  string mission_id = 2;
+  int32 progress_increment = 3;
+}
+
+message UpdateMissionProgressResponse {
+  UserMission mission = 1;
+  bool completed = 2;
+  Rewards rewards = 3; // Only if completed
+}
+
+message CompleteMissionRequest {
+  string user_id = 1;
+  string mission_id = 2;
+}
+
+message CompleteMissionResponse {
+  bool success = 1;
+  Rewards rewards = 2;
+  int32 new_coin_balance = 3;
+}
+
+message AbandonMissionRequest {
+  string user_id = 1;
+  string mission_id = 2;
+}
+
+message AbandonMissionResponse {
+  bool success = 1;
+}
+
+message RefreshMissionsRequest {
+  string user_id = 1;
+}
+
+message RefreshMissionsResponse {
+  bool success = 1;
+  repeated UserMission new_missions = 2;
+  string next_refresh_time = 3;
+}
+
+// Models
+message MissionTemplate {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  string objective_type = 5;
+  int32 target_count = 6;
+  string cipher_type = 7;
+  int32 difficulty_min = 8;
+  int32 difficulty_max = 9;
+  int32 xp_reward = 10;
+  int32 coin_reward = 11;
+  string cosmetic_reward_id = 12;
+  int32 priority = 13;
+  bool is_active = 14;
+}
+
+message UserMission {
+  string id = 1;
+  string user_id = 2;
+  string template_id = 3;
+  string name = 4;
+  string description = 5;
+  string objective_type = 6;
+  int32 progress = 7;
+  int32 target = 8;
+  string status = 9; // active, completed, expired, abandoned
+  string assigned_date = 10;
+  string expires_at = 11;
+  string completed_at = 12;
+  Rewards rewards = 13;
+  int32 seconds_remaining = 14;
+}
+
+message Rewards {
+  int32 xp = 1;
+  int32 coins = 2;
+  string cosmetic_id = 3;
+  repeated string achievement_ids = 4;
+}

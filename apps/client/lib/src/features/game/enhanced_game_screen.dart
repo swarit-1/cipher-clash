@@ -342,15 +342,13 @@ class _EnhancedGameScreenState extends State<EnhancedGameScreen>
                   color: _timerColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
                   border: Border.all(
-                    color: _timerColor.withValues(
-                      alpha: 0.5 + (_pulseController.value * 0.5),
+                    color: _timerColor.withValues(alpha: 0.5 + (_pulseController.value * 0.5),
                     ),
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: _timerColor.withValues(
-                        alpha: 0.3 * _pulseController.value,
+                      color: _timerColor.withValues(alpha: 0.3 * _pulseController.value,
                       ),
                       blurRadius: 12,
                       spreadRadius: 2,

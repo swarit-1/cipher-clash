@@ -56,14 +56,16 @@ func main() {
 	}
 	defer database.Close()
 
-	// Initialize cache
+	// Initialize cache (optional - warn but continue if Redis unavailable)
 	cacheClient, err := cache.New(cfg.Redis, log)
 	if err != nil {
-		log.Fatal("Failed to connect to Redis", map[string]interface{}{
+		log.Warn("Redis unavailable - continuing without cache", map[string]interface{}{
 			"error": err.Error(),
 		})
+		cacheClient = nil // Service will handle nil cache gracefully
+	} else {
+		defer cacheClient.Close()
 	}
-	defer cacheClient.Close()
 
 	// Initialize JWT manager
 	jwtManager := auth.NewJWTManager(cfg.JWT)

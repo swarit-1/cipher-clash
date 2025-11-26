@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package mastery;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/mastery";
+
+// Mastery Service - Cipher skill tree progression
+service MasteryService {
+  // Get mastery tree for a cipher
+  rpc GetMasteryTree(GetMasteryTreeRequest) returns (GetMasteryTreeResponse);
+
+  // Get user's mastery progress
+  rpc GetUserMastery(GetUserMasteryRequest) returns (GetUserMasteryResponse);
+
+  // Unlock mastery node
+  rpc UnlockNode(UnlockNodeRequest) returns (UnlockNodeResponse);
+
+  // Get cipher statistics
+  rpc GetCipherStats(GetCipherStatsRequest) returns (GetCipherStatsResponse);
+
+  // Award mastery points
+  rpc AwardMasteryPoints(AwardMasteryPointsRequest) returns (AwardMasteryPointsResponse);
+
+  // Get mastery leaderboard for cipher
+  rpc GetMasteryLeaderboard(GetMasteryLeaderboardRequest) returns (GetMasteryLeaderboardResponse);
+}
+
+message GetMasteryTreeRequest {
+  string cipher_type = 1;
+}
+
+message GetMasteryTreeResponse {
+  repeated MasteryNode nodes = 1;
+}
+
+message GetUserMasteryRequest {
+  string user_id = 1;
+  string cipher_type = 2; // Optional - all if empty
+}
+
+message GetUserMasteryResponse {
+  repeated CipherMasteryProgress cipher_progress = 1;
+  repeated UnlockedNode unlocked_nodes = 2;
+}
+
+message UnlockNodeRequest {
+  string user_id = 1;
+  string node_id = 2;
+}
+
+message UnlockNodeResponse {
+  bool success = 1;
+  UnlockedNode node = 2;
+  int32 remaining_points = 3;
+  repeated string unlocked_bonuses = 4;
+}
+
+message GetCipherStatsRequest {
+  string user_id = 1;
+  string cipher_type = 2;
+}
+
+message GetCipherStatsResponse {
+  CipherMasteryProgress progress = 1;
+  CipherSolveStats stats = 2;
+}
+
+message AwardMasteryPointsRequest {
+  string user_id = 1;
+  string cipher_type = 2;
+  int32 points = 3;
+  string reason = 4; // puzzle_solved, achievement, bonus
+}
+
+message AwardMasteryPointsResponse {
+  bool success = 1;
+  int32 new_total_points = 2;
+  int32 new_available_points = 3;
+  bool leveled_up = 4;
+  int32 new_level = 5;
+}
+
+message GetMasteryLeaderboardRequest {
+  string cipher_type = 1;
+  int32 limit = 2; // Default 100
+  int32 offset = 3;
+}
+
+message GetMasteryLeaderboardResponse {
+  repeated MasteryLeaderboardEntry entries = 1;
+}
+
+// Models
+message MasteryNode {
+  string id = 1;
+  string cipher_type = 2;
+  string name = 3;
+  string description = 4;
+  int32 tier = 5;
+  int32 position_x = 6;
+  int32 position_y = 7;
+  int32 unlock_cost = 8;
+  string prerequisite_node_id = 9;
+  string bonus_type = 10;
+  float bonus_value = 11;
+  string icon_name = 12;
+  bool is_active = 13;
+}
+
+message UnlockedNode {
+  string id = 1;
+  string user_id = 2;
+  string node_id = 3;
+  string unlocked_at = 4;
+  int32 points_spent = 5;
+  MasteryNode node_details = 6;
+}
+
+message CipherMasteryProgress {
+  string id = 1;
+  string user_id = 2;
+  string cipher_type = 3;
+  int32 total_points = 4;
+  int32 spent_points = 5;
+  int32 available_points = 6;
+  int32 puzzles_solved = 7;
+  int64 total_solve_time_ms = 8;
+  int32 average_solve_time_ms = 9;
+  int32 fastest_solve_time_ms = 10;
+  float accuracy_rate = 11;
+  int32 mastery_level = 12;
+}
+
+message CipherSolveStats {
+  string user_id = 1;
+  string cipher_type = 2;
+  int32 puzzles_attempted = 3;
+  int32 puzzles_solved = 4;
+  int64 total_solve_time_ms = 5;
+  int32 fastest_solve_ms = 6;
+  int32 hints_used = 7;
+  repeated DailySolveCount daily_counts = 8; // Last 30 days
+}
+
+message DailySolveCount {
+  string date = 1;
+  int32 count = 2;
+}
+
+message MasteryLeaderboardEntry {
+  int32 rank = 1;
+  string user_id = 2;
+  string username = 3;
+  string cipher_type = 4;
+  int32 mastery_level = 5;
+  int32 puzzles_solved = 6;
+  int32 average_solve_time_ms = 7;
+  float accuracy_rate = 8;
+}

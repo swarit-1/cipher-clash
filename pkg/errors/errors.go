@@ -155,3 +155,21 @@ func NewRateLimitError() *AppError {
 		HTTPStatus: http.StatusTooManyRequests,
 	}
 }
+
+// NewInternalError creates a generic internal server error
+func NewInternalError(message string) *AppError {
+	return &AppError{
+		Code:       ErrInternalServer,
+		Message:    message,
+		HTTPStatus: http.StatusInternalServerError,
+	}
+}
+
+// NewNotFoundError creates a generic not found error
+func NewNotFoundError(message string) *AppError {
+	return &AppError{
+		Code:       "NOT_FOUND",
+		Message:    message,
+		HTTPStatus: http.StatusNotFound,
+	}
+}
