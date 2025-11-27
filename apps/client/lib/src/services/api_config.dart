@@ -6,6 +6,9 @@ class ApiConfig {
   static const String achievementBaseUrl = 'http://localhost:8083/api/v1';
   static const String gameBaseUrl = 'http://localhost:8088/api/v1';
   static const String tutorialBaseUrl = 'http://localhost:8089/api/v1';
+  static const String practiceBaseUrl = 'http://localhost:8090/api/v1';
+  static const String masteryBaseUrl = 'http://localhost:8091/api/v1';
+  static const String profileBaseUrl = 'http://localhost:8092/api/v1';
 
   // WebSocket URLs
   static const String gameWebSocketUrl = 'ws://localhost:8088/ws';

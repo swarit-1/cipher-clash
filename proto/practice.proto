@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package practice;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/practice";
+
+import "google/protobuf/timestamp.proto";
+
+// Practice Service - Solo puzzle practice without ELO impact
+service PracticeService {
+  // Generate a practice puzzle
+  rpc GeneratePuzzle(GeneratePuzzleRequest) returns (GeneratePuzzleResponse);
+
+  // Submit solution for practice puzzle
+  rpc SubmitSolution(SubmitSolutionRequest) returns (SubmitSolutionResponse);
+
+  // Get practice session history
+  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+
+  // Get personal best records for a cipher
+  rpc GetPersonalBests(GetPersonalBestsRequest) returns (GetPersonalBestsResponse);
+
+  // Get practice statistics
+  rpc GetPracticeStats(GetPracticeStatsRequest) returns (GetPracticeStatsResponse);
+
+  // End active practice session
+  rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
+}
+
+// ============================================================================
+// Request/Response Messages
+// ============================================================================
+
+message GeneratePuzzleRequest {
+  string user_id = 1;
+  string cipher_type = 2;
+  int32 difficulty = 3; // 1-10
+  string mode = 4; // UNTIMED, TIMED, SPEED_RUN, ACCURACY
+  int32 time_limit_seconds = 5; // Optional, for TIMED mode
+}
+
+message GeneratePuzzleResponse {
+  string session_id = 1;
+  PracticePuzzle puzzle = 2;
+  string mode = 3;
+  int64 time_limit_ms = 4; // 0 for untimed
+  google.protobuf.Timestamp started_at = 5;
+}
+
+message SubmitSolutionRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string solution = 3;
+  int64 solve_time_ms = 4;
+  int32 hints_used = 5;
+}
+
+message SubmitSolutionResponse {
+  bool is_correct = 1;
+  double accuracy_percentage = 2;
+  int32 score = 3;
+  bool perfect_solve = 4;
+  SolutionFeedback feedback = 5;
+  PersonalBestUpdate personal_best = 6;
+  MasteryXPGained mastery_update = 7;
+}
+
+message GetHistoryRequest {
+  string user_id = 1;
+  string cipher_type = 2; // Optional filter
+  int32 limit = 3; // Default 20
+  int32 offset = 4; // Default 0
+}
+
+message GetHistoryResponse {
+  repeated PracticeSession sessions = 1;
+  int32 total = 2;
+  bool has_more = 3;
+}
+
+message GetPersonalBestsRequest {
+  string user_id = 1;
+  string cipher_type = 2; // Optional filter
+  int32 difficulty = 3; // Optional filter
+}
+
+message GetPersonalBestsResponse {
+  repeated PersonalBestRecord records = 1;
+}
+
+message GetPracticeStatsRequest {
+  string user_id = 1;
+  string cipher_type = 2; // Optional - all if empty
+}
+
+message GetPracticeStatsResponse {
+  repeated CipherPracticeStats cipher_stats = 1;
+  OverallPracticeStats overall_stats = 2;
+}
+
+message EndSessionRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string reason = 3; // COMPLETED, TIMEOUT, ABANDONED
+}
+
+message EndSessionResponse {
+  bool success = 1;
+  PracticeSession session = 2;
+}
+
+// ============================================================================
+// Domain Models
+// ============================================================================
+
+message PracticePuzzle {
+  string id = 1;
+  string cipher_type = 2;
+  int32 difficulty = 3;
+  string encrypted_text = 4;
+  map<string, string> config = 5; // Cipher-specific config
+  int32 hints_available = 6;
+}
+
+message PracticeSession {
+  string id = 1;
+  string user_id = 2;
+  string puzzle_id = 3;
+  string cipher_type = 4;
+  int32 difficulty = 5;
+  string mode = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp submitted_at = 8;
+  int64 solve_time_ms = 9;
+  int64 time_limit_ms = 10;
+  string user_solution = 11;
+  bool is_correct = 12;
+  double accuracy_percentage = 13;
+  int32 hints_used = 14;
+  int32 score = 15;
+  bool perfect_solve = 16;
+  int32 attempts = 17;
+}
+
+message PersonalBestRecord {
+  string cipher_type = 1;
+  int32 difficulty = 2;
+  int64 fastest_solve_ms = 3;
+  google.protobuf.Timestamp fastest_achieved_at = 4;
+  int32 highest_score = 5;
+  int32 total_practice_sessions = 6;
+  int32 perfect_solves = 7;
+  int64 average_solve_time_ms = 8;
+}
+
+message SolutionFeedback {
+  string message = 1;
+  string time_rating = 2; // EXCELLENT, GOOD, AVERAGE, SLOW
+  string hints_rating = 3; // EXCELLENT, GOOD, AVERAGE, POOR
+  string correct_answer = 4; // Only if incorrect
+  string your_answer = 5; // Only if incorrect
+  int32 character_diff = 6; // Character difference count (if incorrect)
+}
+
+message PersonalBestUpdate {
+  bool is_new_record = 1;
+  string record_type = 2; // FASTEST_TIME, HIGHEST_SCORE
+  int64 previous_fastest_ms = 3;
+  int64 improvement_ms = 4;
+}
+
+message MasteryXPGained {
+  string cipher_type = 1;
+  int32 base_xp = 2;
+  int32 speed_bonus = 3;
+  int32 accuracy_bonus = 4;
+  double mastery_multiplier = 5;
+  int32 total_xp = 6;
+  int32 new_mastery_xp = 7;
+  int32 current_level = 8;
+  bool level_up = 9;
+}
+
+message CipherPracticeStats {
+  string cipher_type = 1;
+  int32 total_sessions = 2;
+  int32 completed_sessions = 3;
+  int32 perfect_solves = 4;
+  int64 fastest_solve_ms = 5;
+  int64 average_solve_time_ms = 6;
+  double success_rate = 7;
+  map<string, int32> mode_breakdown = 8; // mode -> count
+  repeated DifficultyStats difficulty_stats = 9;
+}
+
+message DifficultyStats {
+  int32 difficulty = 1;
+  int32 sessions = 2;
+  int64 avg_time_ms = 3;
+  int32 perfect_count = 4;
+}
+
+message OverallPracticeStats {
+  int32 total_practice_sessions = 1;
+  int32 total_puzzles_solved = 2;
+  int32 total_perfect_solves = 3;
+  int64 total_practice_time_ms = 4;
+  int32 ciphers_practiced = 5;
+  google.protobuf.Timestamp first_practice_at = 6;
+  google.protobuf.Timestamp last_practice_at = 7;
+}

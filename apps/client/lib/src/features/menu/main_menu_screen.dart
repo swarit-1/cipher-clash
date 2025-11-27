@@ -525,14 +525,21 @@ class _MainMenuScreenState extends State<MainMenuScreen>
               children: [
                 Expanded(
                   child: _buildActionCard(
+                    'Practice',
+                    Icons.fitness_center,
+                    AppTheme.electricGreen,
+                    () => Navigator.pushNamed(context, '/practice'),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing2),
+                Expanded(
+                  child: _buildActionCard(
                     'Social',
                     Icons.people_outline,
                     AppTheme.neonRed,
                     () => Navigator.pushNamed(context, '/social'),
                   ),
                 ),
-                const SizedBox(width: AppTheme.spacing2),
-                const Expanded(child: SizedBox()),
               ],
             ),
           ],

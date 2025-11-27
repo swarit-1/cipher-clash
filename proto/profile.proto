@@ -1,0 +1,263 @@
+syntax = "proto3";
+
+package profile;
+
+option go_package = "github.com/swarit-1/cipher-clash/proto/profile";
+
+import "google/protobuf/timestamp.proto";
+
+// Profile Service - Enhanced player profiles and statistics
+service ProfileService {
+  // Get comprehensive player profile
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+
+  // Get per-cipher detailed statistics
+  rpc GetCipherStats(GetCipherStatsRequest) returns (GetCipherStatsResponse);
+
+  // Get match history with details
+  rpc GetMatchHistory(GetMatchHistoryRequest) returns (GetMatchHistoryResponse);
+
+  // Get achievement progress
+  rpc GetAchievements(GetAchievementsRequest) returns (GetAchievementsResponse);
+
+  // Update profile settings
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+
+  // Get global rankings for a user
+  rpc GetRankings(GetRankingsRequest) returns (GetRankingsResponse);
+}
+
+// ============================================================================
+// Request/Response Messages
+// ============================================================================
+
+message GetProfileRequest {
+  string user_id = 1; // "me" for current user
+  string requesting_user_id = 2; // For auth/privacy
+}
+
+message GetProfileResponse {
+  UserProfile user = 1;
+  ProgressionInfo progression = 2;
+  MatchStatistics match_stats = 3;
+  PuzzleStatistics puzzle_stats = 4;
+  AchievementSummary achievements = 5;
+  MasterySummary mastery_summary = 6;
+}
+
+message GetCipherStatsRequest {
+  string user_id = 1;
+  string cipher_type = 2; // Optional - all if empty
+}
+
+message GetCipherStatsResponse {
+  repeated CipherStatistics cipher_stats = 1;
+}
+
+message GetMatchHistoryRequest {
+  string user_id = 1;
+  int32 limit = 2; // Default 20
+  int32 offset = 3; // Default 0
+  string cipher_type = 4; // Optional filter
+  string game_mode = 5; // Optional filter
+  string result = 6; // Optional: WIN, LOSS, ALL
+}
+
+message GetMatchHistoryResponse {
+  repeated MatchRecord matches = 1;
+  int32 total = 2;
+  bool has_more = 3;
+  MatchHistorySummary summary = 4;
+}
+
+message GetAchievementsRequest {
+  string user_id = 1;
+  string category = 2; // Optional filter
+  string status = 3; // Optional: UNLOCKED, IN_PROGRESS, LOCKED
+}
+
+message GetAchievementsResponse {
+  repeated AchievementProgress achievements = 1;
+  AchievementSummary summary = 2;
+}
+
+message UpdateProfileRequest {
+  string user_id = 1;
+  string display_name = 2; // Optional
+  string avatar_url = 3; // Optional
+  string title = 4; // Optional
+  string region = 5; // Optional
+  map<string, string> settings = 6; // Optional
+}
+
+message UpdateProfileResponse {
+  bool success = 1;
+  UserProfile updated_profile = 2;
+}
+
+message GetRankingsRequest {
+  string user_id = 1;
+  string ranking_type = 2; // ELO, CIPHER_MASTERY, ACHIEVEMENTS
+  string cipher_type = 3; // For cipher-specific rankings
+}
+
+message GetRankingsResponse {
+  int32 global_rank = 1;
+  int32 total_players = 2;
+  double percentile = 3;
+  int32 region_rank = 4;
+  int32 total_region_players = 5;
+}
+
+// ============================================================================
+// Domain Models
+// ============================================================================
+
+message UserProfile {
+  string id = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  string title = 5;
+  string region = 6;
+  google.protobuf.Timestamp account_created_at = 7;
+  google.protobuf.Timestamp last_login_at = 8;
+}
+
+message ProgressionInfo {
+  int32 level = 1;
+  int32 xp = 2;
+  int32 xp_to_next_level = 3;
+  int32 elo_rating = 4;
+  string rank_tier = 5; // UNRANKED, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, MASTER, GRANDMASTER
+  string rank_tier_display = 6; // e.g., "Gold III"
+}
+
+message MatchStatistics {
+  int32 total_games = 1;
+  int32 wins = 2;
+  int32 losses = 3;
+  double win_rate_percentage = 4;
+  int32 win_streak = 5;
+  int32 best_win_streak = 6;
+}
+
+message PuzzleStatistics {
+  int32 puzzles_solved = 1;
+  int64 total_solve_time_ms = 2;
+  int64 average_solve_time_ms = 3;
+  int64 fastest_solve_ms = 4;
+  int32 perfect_games = 5;
+  int32 hints_used = 6;
+  double hints_per_puzzle = 7;
+}
+
+message AchievementSummary {
+  int32 unlocked = 1;
+  int32 total = 2;
+  double completion_percentage = 3;
+  repeated RecentAchievement recent_unlocks = 4;
+}
+
+message RecentAchievement {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string rarity = 4; // COMMON, RARE, EPIC, LEGENDARY
+  google.protobuf.Timestamp unlocked_at = 5;
+}
+
+message MasterySummary {
+  int32 grandmaster_ciphers = 1;
+  int32 master_ciphers = 2;
+  int32 expert_ciphers = 3;
+  double average_mastery_level = 4;
+  int32 total_mastery_xp = 5;
+  repeated TopCipher top_ciphers = 6;
+}
+
+message TopCipher {
+  string cipher_type = 1;
+  string mastery_tier = 2;
+  int32 mastery_level = 3;
+  double win_rate = 4;
+}
+
+message CipherStatistics {
+  string cipher_type = 1;
+  int32 games_played = 2;
+  int32 games_won = 3;
+  int32 games_lost = 4;
+  double win_rate = 5;
+  int32 practice_sessions = 6;
+  int32 total_puzzles_solved = 7;
+  int64 average_solve_time_ms = 8;
+  int64 fastest_solve_ms = 9;
+  int32 perfect_solves = 10;
+  int32 hints_used = 11;
+  double hints_per_puzzle = 12;
+  map<string, DifficultyBreakdown> difficulty_breakdown = 13;
+  int32 global_rank = 14;
+  double percentile = 15;
+  google.protobuf.Timestamp first_played_at = 16;
+  google.protobuf.Timestamp last_played_at = 17;
+}
+
+message DifficultyBreakdown {
+  int32 solved = 1;
+  int64 avg_time_ms = 2;
+}
+
+message MatchRecord {
+  string match_id = 1;
+  OpponentInfo opponent = 2;
+  string result = 3; // WIN, LOSS, DRAW
+  string cipher_type = 4;
+  int32 difficulty = 5;
+  string game_mode = 6;
+  int64 duration_ms = 7;
+  int32 elo_change = 8;
+  int32 new_elo = 9;
+  google.protobuf.Timestamp started_at = 10;
+  google.protobuf.Timestamp ended_at = 11;
+  bool perfect_game = 12;
+  int32 hints_used = 13;
+}
+
+message OpponentInfo {
+  string id = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  int32 elo_rating = 5;
+}
+
+message MatchHistorySummary {
+  double recent_win_rate = 1; // Last 20 matches
+  double recent_avg_elo_change = 2;
+  int32 current_streak = 3;
+  string streak_type = 4; // WIN, LOSS
+}
+
+message AchievementProgress {
+  Achievement achievement = 1;
+  ProgressInfo progress = 2;
+}
+
+message Achievement {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  string tier = 5;
+  int32 xp_reward = 6;
+  string icon_url = 7;
+}
+
+message ProgressInfo {
+  int32 current = 1;
+  int32 required = 2;
+  double percentage = 3;
+  bool is_completed = 4;
+  google.protobuf.Timestamp completed_at = 5;
+}

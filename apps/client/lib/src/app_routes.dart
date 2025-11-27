@@ -10,6 +10,7 @@ import 'features/profile/profile_screen.dart';
 import 'features/leaderboard/leaderboard_screen.dart';
 import 'features/achievements/achievements_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/practice/practice_lobby_screen.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -24,6 +25,7 @@ class AppRoutes {
   static const String achievements = '/achievements';
   static const String settings = '/settings';
   static const String social = '/social';
+  static const String practice = '/practice';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -38,6 +40,7 @@ class AppRoutes {
       leaderboard: (context) => const LeaderboardScreen(),
       achievements: (context) => const AchievementsScreen(),
       settings: (context) => const SettingsScreen(),
+      practice: (context) => const PracticeLobbyScreen(),
       // Social screen is a placeholder
       social: (context) => Scaffold(
             appBar: AppBar(title: const Text('Social')),
@@ -85,6 +88,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (context) => const AchievementsScreen());
       case '/settings':
         return MaterialPageRoute(builder: (context) => const SettingsScreen());
+      case '/practice':
+        return MaterialPageRoute(builder: (context) => const PracticeLobbyScreen());
       case '/social':
         return MaterialPageRoute(
           builder: (context) => Scaffold(
