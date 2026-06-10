@@ -85,3 +85,36 @@ func GetAllCipherTypes() []string {
 		TypeAffine, TypeAutokey, TypeEnigmaLite,
 	}
 }
+
+// Config getters tolerant of both fresh Go values (int) and JSON round-trip
+// values (float64). Cipher configs flow both ways: generated in-process and
+// reloaded from the puzzles table's JSONB column.
+
+func cfgInt(config map[string]interface{}, key string) int {
+	switch v := config[key].(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	}
+	return 0
+}
+
+func cfgInt64(config map[string]interface{}, key string) int64 {
+	switch v := config[key].(type) {
+	case int:
+		return int64(v)
+	case int64:
+		return v
+	case float64:
+		return int64(v)
+	}
+	return 0
+}
+
+func cfgString(config map[string]interface{}, key string) string {
+	v, _ := config[key].(string)
+	return v
+}

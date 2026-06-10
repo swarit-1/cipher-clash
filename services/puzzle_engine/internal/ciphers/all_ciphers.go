@@ -19,12 +19,12 @@ type CaesarCipher struct{}
 func (c *CaesarCipher) Name() string { return TypeCaesar }
 
 func (c *CaesarCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	shift := int(config["shift"].(float64))
+	shift := cfgInt(config, "shift")
 	return caesarShift(plaintext, shift), nil
 }
 
 func (c *CaesarCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	shift := int(config["shift"].(float64))
+	shift := cfgInt(config, "shift")
 	return caesarShift(ciphertext, -shift), nil
 }
 
@@ -59,12 +59,12 @@ type VigenereCipher struct{}
 func (v *VigenereCipher) Name() string { return TypeVigenere }
 
 func (v *VigenereCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	return vigenereProcess(plaintext, key, true), nil
 }
 
 func (v *VigenereCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	return vigenereProcess(ciphertext, key, false), nil
 }
 
@@ -113,7 +113,7 @@ type RailFenceCipher struct{}
 func (r *RailFenceCipher) Name() string { return TypeRailFence }
 
 func (r *RailFenceCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	rails := int(config["rails"].(float64))
+	rails := cfgInt(config, "rails")
 	if rails <= 1 {
 		return plaintext, nil
 	}
@@ -140,7 +140,7 @@ func (r *RailFenceCipher) Encrypt(plaintext string, config map[string]interface{
 }
 
 func (r *RailFenceCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	rails := int(config["rails"].(float64))
+	rails := cfgInt(config, "rails")
 	if rails <= 1 {
 		return ciphertext, nil
 	}
@@ -196,13 +196,13 @@ type PlayfairCipher struct{}
 func (p *PlayfairCipher) Name() string { return TypePlayfair }
 
 func (p *PlayfairCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	grid := buildPlayfairGrid(key)
 	return playfairProcess(plaintext, grid, true), nil
 }
 
 func (p *PlayfairCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	grid := buildPlayfairGrid(key)
 	return playfairProcess(ciphertext, grid, false), nil
 }
@@ -296,7 +296,7 @@ type SubstitutionCipher struct{}
 func (s *SubstitutionCipher) Name() string { return TypeSubstitution }
 
 func (s *SubstitutionCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	result := ""
 	for _, char := range plaintext {
 		if char >= 'A' && char <= 'Z' {
@@ -311,7 +311,7 @@ func (s *SubstitutionCipher) Encrypt(plaintext string, config map[string]interfa
 }
 
 func (s *SubstitutionCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	reverseKey := make(map[rune]rune)
 	for i, char := range key {
 		reverseKey[char] = rune('A' + i)
@@ -344,7 +344,7 @@ type TranspositionCipher struct{}
 func (t *TranspositionCipher) Name() string { return TypeTransposition }
 
 func (t *TranspositionCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	cols := len(key)
 	rows := (len(plaintext) + cols - 1) / cols
 	grid := make([][]rune, rows)
@@ -373,7 +373,7 @@ func (t *TranspositionCipher) Encrypt(plaintext string, config map[string]interf
 }
 
 func (t *TranspositionCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
+	key := cfgString(config, "key")
 	cols := len(key)
 	rows := len(ciphertext) / cols
 
@@ -418,13 +418,31 @@ type XORCipher struct{}
 func (x *XORCipher) Name() string { return TypeXOR }
 
 func (x *XORCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
-	return xorProcess(plaintext, key), nil
+	key := cfgString(config, "key")
+	if key == "" {
+		return "", fmt.Errorf("xor: empty key")
+	}
+	out := make([]byte, len(plaintext))
+	for i := 0; i < len(plaintext); i++ {
+		out[i] = plaintext[i] ^ key[i%len(key)]
+	}
+	return hex.EncodeToString(out), nil
 }
 
 func (x *XORCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	key := config["key"].(string)
-	return xorProcess(ciphertext, key), nil
+	key := cfgString(config, "key")
+	if key == "" {
+		return "", fmt.Errorf("xor: empty key")
+	}
+	raw, err := hex.DecodeString(ciphertext)
+	if err != nil {
+		return "", fmt.Errorf("xor: ciphertext is not hex: %w", err)
+	}
+	out := make([]byte, len(raw))
+	for i, b := range raw {
+		out[i] = b ^ key[i%len(key)]
+	}
+	return string(out), nil
 }
 
 func (x *XORCipher) GenerateKey(difficulty int) map[string]interface{} {
@@ -436,13 +454,6 @@ func (x *XORCipher) GenerateKey(difficulty int) map[string]interface{} {
 	return map[string]interface{}{"key": key}
 }
 
-func xorProcess(text, key string) string {
-	result := ""
-	for i, char := range text {
-		result += string(char ^ rune(key[i%len(key)]))
-	}
-	return hex.EncodeToString([]byte(result))
-}
 
 // ============================================================================
 // 8. BASE64 CIPHER
@@ -593,18 +604,22 @@ func (a *AtbashCipher) GenerateKey(difficulty int) map[string]interface{} {
 type BookCipherImpl struct{}
 func (b *BookCipherImpl) Name() string { return TypeBookCipher }
 func (b *BookCipherImpl) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	book := config["book"].(string)
+	book := strings.ToUpper(cfgString(config, "book"))
 	result := ""
 	for _, char := range strings.ToUpper(plaintext) {
-		idx := strings.Index(strings.ToUpper(book), string(char))
-		if idx >= 0 {
-			result += fmt.Sprintf("%d ", idx)
+		if char < 'A' || char > 'Z' {
+			continue // letters only; spacing is not part of the cipher
 		}
+		idx := strings.IndexRune(book, char)
+		if idx < 0 {
+			return "", fmt.Errorf("book cipher: letter %q not present in book", char)
+		}
+		result += fmt.Sprintf("%d ", idx)
 	}
 	return strings.TrimSpace(result), nil
 }
 func (b *BookCipherImpl) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	book := config["book"].(string)
+	book := cfgString(config, "book")
 	parts := strings.Split(ciphertext, " ")
 	result := ""
 	for _, part := range parts {
@@ -617,10 +632,11 @@ func (b *BookCipherImpl) Decrypt(ciphertext string, config map[string]interface{
 	return result, nil
 }
 func (b *BookCipherImpl) GenerateKey(difficulty int) map[string]interface{} {
+	// Pangrams: every plaintext letter is guaranteed to be present.
 	books := []string{
 		"THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
-		"CRYPTOGRAPHY IS THE PRACTICE OF SECURE COMMUNICATION",
-		"HELLO WORLD THIS IS A TEST MESSAGE FOR ENCRYPTION",
+		"PACK MY BOX WITH FIVE DOZEN LIQUOR JUGS",
+		"SPHINX OF BLACK QUARTZ JUDGE MY VOW",
 	}
 	return map[string]interface{}{"book": books[randInt(len(books))]}
 }
@@ -628,8 +644,8 @@ func (b *BookCipherImpl) GenerateKey(difficulty int) map[string]interface{} {
 type RSASimpleCipher struct{}
 func (r *RSASimpleCipher) Name() string { return TypeRSASimple }
 func (r *RSASimpleCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	e := int64(config["e"].(float64))
-	n := int64(config["n"].(float64))
+	e := cfgInt64(config, "e")
+	n := cfgInt64(config, "n")
 	result := ""
 	for _, char := range plaintext {
 		encrypted := modPow(int64(char), e, n)
@@ -638,8 +654,8 @@ func (r *RSASimpleCipher) Encrypt(plaintext string, config map[string]interface{
 	return strings.TrimSpace(result), nil
 }
 func (r *RSASimpleCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	d := int64(config["d"].(float64))
-	n := int64(config["n"].(float64))
+	d := cfgInt64(config, "d")
+	n := cfgInt64(config, "n")
 	parts := strings.Split(ciphertext, " ")
 	result := ""
 	for _, part := range parts {
@@ -730,8 +746,8 @@ type AffineCipher struct{}
 func (a *AffineCipher) Name() string { return TypeAffine }
 
 func (a *AffineCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	keyA := int(config["a"].(float64))
-	keyB := int(config["b"].(float64))
+	keyA := cfgInt(config, "a")
+	keyB := cfgInt(config, "b")
 
 	result := ""
 	for _, char := range plaintext {
@@ -751,8 +767,8 @@ func (a *AffineCipher) Encrypt(plaintext string, config map[string]interface{}) 
 }
 
 func (a *AffineCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	keyA := int(config["a"].(float64))
-	keyB := int(config["b"].(float64))
+	keyA := cfgInt(config, "a")
+	keyB := cfgInt(config, "b")
 
 	// Find multiplicative inverse of a mod 26
 	aInverse := int(modInverse(int64(keyA), 26))
@@ -796,29 +812,26 @@ type AutokeyCipher struct{}
 func (a *AutokeyCipher) Name() string { return TypeAutokey }
 
 func (a *AutokeyCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	primer := strings.ToUpper(config["primer"].(string))
+	primer := strings.ToUpper(cfgString(config, "primer"))
+
+	// Standard autokey: keystream = primer followed by the plaintext itself.
+	keystream := primer
+	for _, char := range strings.ToUpper(plaintext) {
+		if char >= 'A' && char <= 'Z' {
+			keystream += string(char)
+		}
+	}
 
 	result := ""
-	keystream := primer
 	keyIndex := 0
-
 	for _, char := range plaintext {
 		if char >= 'A' && char <= 'Z' {
-			if keyIndex >= len(keystream) {
-				keystream += string(char)
-			}
 			shift := int(keystream[keyIndex] - 'A')
-			encrypted := (int(char-'A') + shift) % 26
-			result += string(rune(encrypted + 'A'))
+			result += string(rune((int(char-'A')+shift)%26 + 'A'))
 			keyIndex++
 		} else if char >= 'a' && char <= 'z' {
-			upperChar := char - 'a' + 'A'
-			if keyIndex >= len(keystream) {
-				keystream += string(upperChar)
-			}
 			shift := int(keystream[keyIndex] - 'A')
-			encrypted := (int(upperChar-'A') + shift) % 26
-			result += string(rune(encrypted + 'a'))
+			result += string(rune((int(char-'a')+shift)%26 + 'a'))
 			keyIndex++
 		} else {
 			result += string(char)
@@ -828,7 +841,7 @@ func (a *AutokeyCipher) Encrypt(plaintext string, config map[string]interface{})
 }
 
 func (a *AutokeyCipher) Decrypt(ciphertext string, config map[string]interface{}) (string, error) {
-	primer := strings.ToUpper(config["primer"].(string))
+	primer := strings.ToUpper(cfgString(config, "primer"))
 
 	result := ""
 	keystream := primer
@@ -878,14 +891,14 @@ type EnigmaLiteCipher struct{}
 func (e *EnigmaLiteCipher) Name() string { return TypeEnigmaLite }
 
 func (e *EnigmaLiteCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
-	rotor1 := config["rotor1"].(string)
-	rotor2 := config["rotor2"].(string)
-	rotor3 := config["rotor3"].(string)
-	reflector := config["reflector"].(string)
+	rotor1 := cfgString(config, "rotor1")
+	rotor2 := cfgString(config, "rotor2")
+	rotor3 := cfgString(config, "rotor3")
+	reflector := cfgString(config, "reflector")
 
-	pos1 := int(config["pos1"].(float64))
-	pos2 := int(config["pos2"].(float64))
-	pos3 := int(config["pos3"].(float64))
+	pos1 := cfgInt(config, "pos1")
+	pos2 := cfgInt(config, "pos2")
+	pos3 := cfgInt(config, "pos3")
 
 	result := ""
 

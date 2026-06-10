@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/swarit-1/cipher-clash/pkg/cache"
@@ -243,7 +244,7 @@ func (s *PuzzleService) ValidateSolution(ctx context.Context, req *ValidateSolut
 	submittedSolution := normalizeText(req.Solution)
 	correctSolution := normalizeText(puzzle.Plaintext)
 
-	isCorrect := submittedSolution == correctSolution
+	isCorrect := solutionsMatch(puzzle.CipherType, submittedSolution, correctSolution)
 
 	// Calculate score based on difficulty and solve time
 	score := 0
@@ -396,6 +397,26 @@ func (s *PuzzleService) updatePuzzleStats(ctx context.Context, puzzleID string, 
 			"error": err.Error(),
 		})
 	}
+}
+
+// solutionsMatch compares normalized solutions. Playfair canonicalizes
+// J->I and pads with X, so a *correct* decryption differs from the original
+// plaintext; accept those equivalences.
+func solutionsMatch(cipherType, submitted, correct string) bool {
+	if submitted == correct {
+		return true
+	}
+	if cipherType == "PLAYFAIR" {
+		s := strings.ReplaceAll(submitted, "J", "I")
+		c := strings.ReplaceAll(correct, "J", "I")
+		if s == c {
+			return true
+		}
+		if strings.TrimRight(s, "X") == strings.TrimRight(c, "X") {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeText(text string) string {
