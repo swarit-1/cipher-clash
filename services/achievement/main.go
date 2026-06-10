@@ -14,6 +14,8 @@ import (
 	"github.com/swarit-1/cipher-clash/pkg/config"
 	"github.com/swarit-1/cipher-clash/pkg/db"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
+	"github.com/swarit-1/cipher-clash/pkg/messaging"
+	"github.com/swarit-1/cipher-clash/services/achievement/internal/consumer"
 	"github.com/swarit-1/cipher-clash/services/achievement/internal/handler"
 	"github.com/swarit-1/cipher-clash/services/achievement/internal/middleware"
 	"github.com/swarit-1/cipher-clash/services/achievement/internal/repository"
@@ -79,6 +81,34 @@ func main() {
 		cacheClient,
 		log,
 	)
+
+	// Event pipeline: match.completed -> progress/unlocks/XP.
+	publisher, err := messaging.NewPublisher(cfg.RabbitMQ, log)
+	if err != nil {
+		log.Fatal("Failed to connect to RabbitMQ", map[string]interface{}{"error": err.Error()})
+	}
+	defer publisher.Close()
+	if err := messaging.InitializeExchanges(publisher); err != nil {
+		log.Fatal("Failed to initialize exchanges", map[string]interface{}{"error": err.Error()})
+	}
+
+	subscriber, err := messaging.NewSubscriber(cfg.RabbitMQ, log)
+	if err != nil {
+		log.Fatal("Failed to create subscriber", map[string]interface{}{"error": err.Error()})
+	}
+	defer subscriber.Close()
+
+	matchConsumer := consumer.New(achievementRepo, userAchievementRepo, database, cacheClient, publisher, log)
+	const matchQueue = "achievement.match_completed"
+	if _, err := subscriber.DeclareQueue(matchQueue); err != nil {
+		log.Fatal("Failed to declare queue", map[string]interface{}{"error": err.Error()})
+	}
+	if err := subscriber.BindQueue(matchQueue, messaging.ExchangeMatches, "match.completed"); err != nil {
+		log.Fatal("Failed to bind queue", map[string]interface{}{"error": err.Error()})
+	}
+	if err := subscriber.Subscribe(matchQueue, matchConsumer.HandleMatchCompleted); err != nil {
+		log.Fatal("Failed to subscribe", map[string]interface{}{"error": err.Error()})
+	}
 
 	// Initialize handlers
 	achievementHandler := handler.NewAchievementHandler(achievementService, log)

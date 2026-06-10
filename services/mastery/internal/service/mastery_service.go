@@ -248,6 +248,40 @@ func (s *MasteryService) AwardMasteryPoints(ctx context.Context, userID uuid.UUI
 	return cipherPoints, nil
 }
 
+// RecordSolve awards mastery XP for one correct puzzle solve and updates
+// the per-cipher solve statistics. Called by the match.completed consumer.
+func (s *MasteryService) RecordSolve(ctx context.Context, userID uuid.UUID, cipherType string, solveTimeMs int64, points int) error {
+	cipherPoints, err := s.cipherPointsRepo.GetCipherPoints(ctx, userID, cipherType)
+	isNew := err != nil
+	if isNew {
+		cipherPoints = &models.CipherMasteryPoints{
+			UserID:     userID,
+			CipherType: cipherType,
+			Level:      1,
+		}
+	}
+
+	cipherPoints.TotalPoints += points
+	cipherPoints.AvailablePoints += points
+	cipherPoints.Level = (cipherPoints.TotalPoints / 100) + 1
+	cipherPoints.PuzzlesSolved++
+	cipherPoints.TotalSolveTimeMS += solveTimeMs
+	if cipherPoints.FastestSolveMS == 0 || solveTimeMs < cipherPoints.FastestSolveMS {
+		cipherPoints.FastestSolveMS = solveTimeMs
+	}
+
+	if isNew {
+		err = s.cipherPointsRepo.CreateCipherPoints(ctx, cipherPoints)
+	} else {
+		err = s.cipherPointsRepo.UpdateCipherPoints(ctx, cipherPoints)
+	}
+	if err != nil {
+		s.log.LogError("Failed to record mastery solve", "user_id", userID, "cipher", cipherType, "error", err)
+		return err
+	}
+	return nil
+}
+
 // GetMasteryLeaderboard retrieves top players for a cipher
 func (s *MasteryService) GetMasteryLeaderboard(ctx context.Context, cipherType string, limit int) ([]*models.LeaderboardEntry, error) {
 	entries, err := s.cipherPointsRepo.GetLeaderboard(ctx, cipherType, limit)

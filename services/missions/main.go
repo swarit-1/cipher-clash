@@ -13,6 +13,8 @@ import (
 	"github.com/swarit-1/cipher-clash/pkg/config"
 	"github.com/swarit-1/cipher-clash/pkg/db"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
+	"github.com/swarit-1/cipher-clash/pkg/messaging"
+	"github.com/swarit-1/cipher-clash/services/missions/internal/consumer"
 	"github.com/swarit-1/cipher-clash/services/missions/internal/handler"
 	"github.com/swarit-1/cipher-clash/services/missions/internal/repository"
 	"github.com/swarit-1/cipher-clash/services/missions/internal/service"
@@ -46,7 +48,26 @@ func main() {
 	userMissionsRepo := repository.NewUserMissionsRepository(database.DB)
 
 	// Initialize service
-	missionsService := service.NewMissionsService(missionsRepo, userMissionsRepo, log)
+	missionsService := service.NewMissionsService(missionsRepo, userMissionsRepo, database, log)
+
+	// Event pipeline: match.completed -> mission progress.
+	subscriber, err := messaging.NewSubscriber(cfg.RabbitMQ, log)
+	if err != nil {
+		log.Fatal("Failed to create subscriber", map[string]interface{}{"error": err})
+	}
+	defer subscriber.Close()
+
+	matchConsumer := consumer.New(missionsService, database, log)
+	const matchQueue = "missions.match_completed"
+	if _, err := subscriber.DeclareQueue(matchQueue); err != nil {
+		log.Fatal("Failed to declare queue", map[string]interface{}{"error": err})
+	}
+	if err := subscriber.BindQueue(matchQueue, messaging.ExchangeMatches, "match.completed"); err != nil {
+		log.Fatal("Failed to bind queue", map[string]interface{}{"error": err})
+	}
+	if err := subscriber.Subscribe(matchQueue, matchConsumer.HandleMatchCompleted); err != nil {
+		log.Fatal("Failed to subscribe", map[string]interface{}{"error": err})
+	}
 
 	// Initialize handler
 	missionsHandler := handler.NewMissionsHandler(missionsService, log)

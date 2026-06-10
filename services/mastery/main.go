@@ -13,6 +13,8 @@ import (
 	"github.com/swarit-1/cipher-clash/pkg/config"
 	"github.com/swarit-1/cipher-clash/pkg/db"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
+	"github.com/swarit-1/cipher-clash/pkg/messaging"
+	"github.com/swarit-1/cipher-clash/services/mastery/internal/consumer"
 	"github.com/swarit-1/cipher-clash/services/mastery/internal/handler"
 	"github.com/swarit-1/cipher-clash/services/mastery/internal/repository"
 	"github.com/swarit-1/cipher-clash/services/mastery/internal/service"
@@ -45,6 +47,25 @@ func main() {
 
 	// Initialize service
 	masteryService := service.NewMasteryService(masteryNodesRepo, userMasteryRepo, cipherPointsRepo, log)
+
+	// Event pipeline: match.completed -> per-cipher mastery XP.
+	subscriber, err := messaging.NewSubscriber(cfg.RabbitMQ, log)
+	if err != nil {
+		log.Fatal("Failed to create subscriber", map[string]interface{}{"error": err})
+	}
+	defer subscriber.Close()
+
+	matchConsumer := consumer.New(masteryService, log)
+	const matchQueue = "mastery.match_completed"
+	if _, err := subscriber.DeclareQueue(matchQueue); err != nil {
+		log.Fatal("Failed to declare queue", map[string]interface{}{"error": err})
+	}
+	if err := subscriber.BindQueue(matchQueue, messaging.ExchangeMatches, "match.completed"); err != nil {
+		log.Fatal("Failed to bind queue", map[string]interface{}{"error": err})
+	}
+	if err := subscriber.Subscribe(matchQueue, matchConsumer.HandleMatchCompleted); err != nil {
+		log.Fatal("Failed to subscribe", map[string]interface{}{"error": err})
+	}
 
 	// Initialize handler
 	masteryHandler := handler.NewMasteryHandler(masteryService, log)

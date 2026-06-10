@@ -205,8 +205,30 @@ func (s *Subscriber) DeclareQueue(name string) (amqp.Queue, error) {
 	)
 }
 
-// BindQueue binds a queue to an exchange
+// DeclareExchange declares an exchange from the subscriber side, so
+// consumers can start before any publisher has created it.
+func (s *Subscriber) DeclareExchange(name, kind string) error {
+	return s.channel.ExchangeDeclare(
+		name,
+		kind,
+		true,  // durable
+		false, // auto-deleted
+		false, // internal
+		false, // no-wait
+		nil,   // arguments
+	)
+}
+
+// BindQueue binds a queue to an exchange, declaring the exchange first so
+// binding never depends on publisher start order.
 func (s *Subscriber) BindQueue(queueName, exchangeName, routingKey string) error {
+	kind := "topic"
+	if exchangeName == ExchangeAchievements {
+		kind = "fanout"
+	}
+	if err := s.DeclareExchange(exchangeName, kind); err != nil {
+		return err
+	}
 	return s.channel.QueueBind(
 		queueName,
 		routingKey,

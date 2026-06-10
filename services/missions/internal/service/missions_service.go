@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/swarit-1/cipher-clash/pkg/db"
 	"github.com/swarit-1/cipher-clash/pkg/errors"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
 	"github.com/swarit-1/cipher-clash/services/missions/internal/models"
@@ -19,17 +20,20 @@ type MissionRewards struct {
 type MissionsService struct {
 	missionsRepo     repository.MissionsRepository
 	userMissionsRepo repository.UserMissionsRepository
+	db               *db.DB
 	log              *logger.Logger
 }
 
 func NewMissionsService(
 	missionsRepo repository.MissionsRepository,
 	userMissionsRepo repository.UserMissionsRepository,
+	database *db.DB,
 	log *logger.Logger,
 ) *MissionsService {
 	return &MissionsService{
 		missionsRepo:     missionsRepo,
 		userMissionsRepo: userMissionsRepo,
+		db:               database,
 		log:              log,
 	}
 }
@@ -244,10 +248,45 @@ func (s *MissionsService) ClaimMissionReward(ctx context.Context, userID uuid.UU
 		return nil, errors.NewInternalError("Failed to claim rewards")
 	}
 
-	// TODO: Add rewards to user wallet/profile
+	// Credit rewards to the user and record the transaction.
+	if err := s.creditRewards(ctx, userID, rewards, templateID); err != nil {
+		s.log.LogError("Failed to credit mission rewards", "user_id", userID, "error", err)
+		return nil, errors.NewInternalError("Failed to credit rewards")
+	}
 
 	s.log.LogInfo("Mission rewards claimed", "user_id", userID, "xp", rewards.XP, "coins", rewards.Coins)
 	return rewards, nil
+}
+
+// creditRewards applies coin/XP rewards atomically and logs the wallet
+// transaction.
+func (s *MissionsService) creditRewards(ctx context.Context, userID uuid.UUID, rewards *MissionRewards, templateID string) error {
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var balanceAfter int
+	if err := tx.QueryRowContext(ctx, `
+		UPDATE users SET coins = coins + $2, xp = xp + $3, updated_at = NOW()
+		WHERE id = $1
+		RETURNING coins`,
+		userID, rewards.Coins, rewards.XP,
+	).Scan(&balanceAfter); err != nil {
+		return err
+	}
+
+	if rewards.Coins != 0 {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO wallet_transactions (user_id, transaction_type, amount, source, reference_id, balance_after)
+			VALUES ($1, 'earn', $2, 'mission_claim', $3, $4)`,
+			userID, rewards.Coins, templateID, balanceAfter,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // RefreshExpiredMissions removes expired missions and optionally assigns new ones
