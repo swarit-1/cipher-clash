@@ -23,6 +23,7 @@ type MatchInvite struct {
 	ToUserID   uuid.UUID `json:"to_user_id"`
 	GameMode   string    `json:"game_mode"`
 	Status     string    `json:"status"`
+	MatchID    string    `json:"match_id,omitempty"` // set when accepted
 	CreatedAt  time.Time `json:"created_at"`
 	ExpiresAt  time.Time `json:"expires_at"`
 }

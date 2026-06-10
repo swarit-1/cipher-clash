@@ -10,9 +10,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"github.com/swarit-1/cipher-clash/pkg/cache"
 	"github.com/swarit-1/cipher-clash/pkg/config"
 	"github.com/swarit-1/cipher-clash/pkg/db"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
+	"github.com/swarit-1/cipher-clash/pkg/messaging"
 	"github.com/swarit-1/cipher-clash/services/social/internal/handler"
 	"github.com/swarit-1/cipher-clash/services/social/internal/repository"
 	"github.com/swarit-1/cipher-clash/services/social/internal/service"
@@ -43,8 +45,24 @@ func main() {
 	invitesRepo := repository.NewInvitesRepository(database.DB)
 	spectatorRepo := repository.NewSpectatorRepository(database.DB)
 
+	// Cache + publisher power the invite -> match handoff.
+	cacheClient, err := cache.New(cfg.Redis, log)
+	if err != nil {
+		log.Fatal("Failed to connect to Redis", map[string]interface{}{"error": err})
+	}
+	defer cacheClient.Close()
+
+	publisher, err := messaging.NewPublisher(cfg.RabbitMQ, log)
+	if err != nil {
+		log.Fatal("Failed to connect to RabbitMQ", map[string]interface{}{"error": err})
+	}
+	defer publisher.Close()
+	if err := messaging.InitializeExchanges(publisher); err != nil {
+		log.Fatal("Failed to initialize exchanges", map[string]interface{}{"error": err})
+	}
+
 	// Initialize service
-	socialService := service.NewSocialService(friendsRepo, invitesRepo, spectatorRepo, log)
+	socialService := service.NewSocialService(friendsRepo, invitesRepo, spectatorRepo, database, cacheClient, publisher, log)
 
 	// Initialize handler
 	socialHandler := handler.NewSocialHandler(socialService, log)

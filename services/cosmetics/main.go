@@ -41,7 +41,7 @@ func main() {
 	inventoryRepo := repository.NewInventoryRepository(database.DB)
 	loadoutRepo := repository.NewLoadoutRepository(database.DB)
 
-	cosmeticsService := service.NewCosmeticsService(catalogRepo, inventoryRepo, loadoutRepo, log)
+	cosmeticsService := service.NewCosmeticsService(catalogRepo, inventoryRepo, loadoutRepo, database, log)
 	cosmeticsHandler := handler.NewCosmeticsHandler(cosmeticsService, log)
 
 	router := setupRouter(cosmeticsHandler)

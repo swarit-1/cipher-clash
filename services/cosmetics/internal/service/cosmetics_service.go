@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/swarit-1/cipher-clash/pkg/db"
 	"github.com/swarit-1/cipher-clash/pkg/errors"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
 	"github.com/swarit-1/cipher-clash/services/cosmetics/internal/models"
@@ -15,6 +16,7 @@ type CosmeticsService struct {
 	catalogRepo   repository.CatalogRepository
 	inventoryRepo repository.InventoryRepository
 	loadoutRepo   repository.LoadoutRepository
+	db            *db.DB
 	log           *logger.Logger
 }
 
@@ -22,12 +24,14 @@ func NewCosmeticsService(
 	catalogRepo repository.CatalogRepository,
 	inventoryRepo repository.InventoryRepository,
 	loadoutRepo repository.LoadoutRepository,
+	database *db.DB,
 	log *logger.Logger,
 ) *CosmeticsService {
 	return &CosmeticsService{
 		catalogRepo:   catalogRepo,
 		inventoryRepo: inventoryRepo,
 		loadoutRepo:   loadoutRepo,
+		db:            database,
 		log:           log,
 	}
 }
@@ -107,11 +111,7 @@ func (s *CosmeticsService) PurchaseCosmetic(ctx context.Context, userID uuid.UUI
 		return nil, 0, errors.NewInvalidInputError("This cosmetic is not available for purchase")
 	}
 
-	// TODO: Check user's coin balance and deduct coins
-	// For now, we'll assume the purchase is successful
-	newCoinBalance := 0 // Replace with actual balance after deduction
-
-	// Add to inventory
+	// Deduct coins, grant the item, and log the transaction atomically.
 	userCosmetic := &models.UserCosmetic{
 		ID:              uuid.New(),
 		UserID:          userID,
@@ -122,12 +122,48 @@ func (s *CosmeticsService) PurchaseCosmetic(ctx context.Context, userID uuid.UUI
 		Source:          "purchase",
 	}
 
-	if err := s.inventoryRepo.AddCosmetic(ctx, userCosmetic); err != nil {
-		s.log.LogError("Failed to add cosmetic to inventory", "error", err)
+	tx, err := s.db.BeginTx(ctx)
+	if err != nil {
+		return nil, 0, errors.NewInternalError("Failed to start purchase")
+	}
+	defer tx.Rollback()
+
+	var balance int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT coins FROM users WHERE id = $1 FOR UPDATE`, userID,
+	).Scan(&balance); err != nil {
+		return nil, 0, errors.NewUserNotFoundError()
+	}
+	if balance < cosmetic.CoinCost {
+		return nil, 0, errors.NewInvalidInputError("Insufficient coins")
+	}
+
+	newCoinBalance := balance - cosmetic.CoinCost
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE users SET coins = $2, updated_at = NOW() WHERE id = $1`,
+		userID, newCoinBalance,
+	); err != nil {
+		return nil, 0, errors.NewInternalError("Failed to deduct coins")
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO user_cosmetics (id, user_id, cosmetic_id, acquired_at, is_equipped, source)
+		VALUES ($1, $2, $3, $4, FALSE, 'purchase')`,
+		userCosmetic.ID, userID, cosmeticID, userCosmetic.AcquiredAt,
+	); err != nil {
+		return nil, 0, errors.NewInternalError("Failed to add cosmetic to inventory")
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO wallet_transactions (user_id, transaction_type, amount, source, reference_id, balance_after)
+		VALUES ($1, 'spend', $2, 'cosmetic_purchase', $3, $4)`,
+		userID, -cosmetic.CoinCost, cosmeticID, newCoinBalance,
+	); err != nil {
+		return nil, 0, errors.NewInternalError("Failed to record transaction")
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, 0, errors.NewInternalError("Failed to complete purchase")
 	}
 
-	s.log.LogInfo("Cosmetic purchased", "user_id", userID, "cosmetic_id", cosmeticID)
+	s.log.LogInfo("Cosmetic purchased", "user_id", userID, "cosmetic_id", cosmeticID, "cost", cosmetic.CoinCost, "balance", newCoinBalance)
 	return userCosmetic, newCoinBalance, nil
 }
 
