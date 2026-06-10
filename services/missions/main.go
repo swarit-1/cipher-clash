@@ -20,7 +20,7 @@ import (
 
 const (
 	ServiceName     = "missions-service"
-	DefaultPort     = "8090"
+	DefaultPort     = "8084"
 	ShutdownTimeout = 15 * time.Second
 )
 
@@ -64,6 +64,9 @@ func main() {
 
 	// Get port from environment or use default
 	port := os.Getenv("MISSIONS_SERVICE_PORT")
+	if port == "" {
+		port = os.Getenv("PORT")
+	}
 	if port == "" {
 		port = DefaultPort
 	}

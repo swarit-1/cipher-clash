@@ -1,0 +1,36 @@
+-- Reverse of 0001_baseline
+DROP TRIGGER IF EXISTS trg_update_practice_leaderboard ON practice_sessions;
+DROP FUNCTION IF EXISTS update_practice_leaderboard();
+DROP TRIGGER IF EXISTS auto_update_rank_tier ON users;
+DROP FUNCTION IF EXISTS update_rank_tier();
+DROP FUNCTION IF EXISTS calculate_rank_tier(INT);
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP FUNCTION IF EXISTS update_updated_at_column();
+
+DROP TABLE IF EXISTS wallet_transactions;
+DROP TABLE IF EXISTS user_loadouts;
+DROP TABLE IF EXISTS user_cosmetics;
+DROP TABLE IF EXISTS cosmetics;
+DROP TABLE IF EXISTS spectator_sessions;
+DROP TABLE IF EXISTS match_invitations;
+DROP TABLE IF EXISTS friendships;
+DROP TABLE IF EXISTS practice_leaderboards;
+DROP TABLE IF EXISTS practice_sessions;
+DROP TABLE IF EXISTS cipher_mastery_points;
+DROP TABLE IF EXISTS user_mastery;
+DROP TABLE IF EXISTS mastery_nodes;
+DROP TABLE IF EXISTS user_missions;
+DROP TABLE IF EXISTS mission_templates;
+DROP TABLE IF EXISTS user_tutorial_progress;
+DROP TABLE IF EXISTS tutorial_steps;
+DROP TABLE IF EXISTS user_achievements;
+DROP TABLE IF EXISTS achievements;
+DROP TABLE IF EXISTS queue_metrics;
+DROP TABLE IF EXISTS puzzle_attempts;
+DROP TABLE IF EXISTS match_participants;
+DROP TABLE IF EXISTS matches;
+DROP TABLE IF EXISTS puzzles;
+DROP TABLE IF EXISTS game_modes;
+DROP TABLE IF EXISTS seasons;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS users;

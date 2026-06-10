@@ -1,3 +1,14 @@
+x-go-service: &go-service
+  build:
+    context: .
+    dockerfile: infra/docker/go.Dockerfile
+  restart: unless-stopped
+
+x-db-env: &db-env
+  DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable}
+  REDIS_ADDR: redis:6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD}
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -9,12 +20,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/schema_v2.sql:/docker-entrypoint-initdb.d/schema_v2.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -23,13 +33,13 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep PONG"]
+      interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
@@ -44,98 +54,200 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 10
 
-  auth-service:
+  # --------------------------------------------------------------------------
+  # Application services (canonical ports; identical inside and outside)
+  # --------------------------------------------------------------------------
+
+  achievement:
+    <<: *go-service
     build:
       context: .
       dockerfile: infra/docker/go.Dockerfile
-      args:
-        SERVICE_NAME: auth
-    ports:
-      - "${AUTH_SERVICE_PORT}:8080"
+      args: { SERVICE_NAME: achievement }
+    ports: ["8083:8083"]
     environment:
-      - PORT=${AUTH_SERVICE_PORT}
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_ADDR=${REDIS_ADDR}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_ACCESS_TTL=${JWT_ACCESS_TTL}
-      - JWT_REFRESH_TTL=${JWT_REFRESH_TTL}
+      <<: *db-env
+      PORT: "8083"
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: ${DOCKER_RABBITMQ_URL:-amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST}}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  missions:
+    <<: *go-service
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args: { SERVICE_NAME: missions }
+    ports: ["8084:8084"]
+    environment:
+      <<: *db-env
+      PORT: "8084"
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: ${DOCKER_RABBITMQ_URL:-amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST}}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  auth:
+    <<: *go-service
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args: { SERVICE_NAME: auth }
+    ports: ["8085:8085"]
+    environment:
+      <<: *db-env
+      PORT: "8085"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
 
   matchmaker:
+    <<: *go-service
     build:
       context: .
       dockerfile: infra/docker/go.Dockerfile
-      args:
-        SERVICE_NAME: matchmaker
-    ports:
-      - "${MATCHMAKER_PORT}:8081"
+      args: { SERVICE_NAME: matchmaker }
+    ports: ["8086:8086"]
     environment:
-      - PORT=${MATCHMAKER_PORT}
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_ADDR=${REDIS_ADDR}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+      <<: *db-env
+      PORT: "8086"
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      RABBITMQ_URL: ${DOCKER_RABBITMQ_URL:-amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST}}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
 
   puzzle-engine:
+    <<: *go-service
     build:
       context: .
       dockerfile: infra/docker/go.Dockerfile
-      args:
-        SERVICE_NAME: puzzle_engine
-    ports:
-      - "${PUZZLE_ENGINE_PORT}:8082"
+      args: { SERVICE_NAME: puzzle_engine }
+    ports: ["8087:8087"]
     environment:
-      - PORT=${PUZZLE_ENGINE_PORT}
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_ADDR=${REDIS_ADDR}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      <<: *db-env
+      PORT: "8087"
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
 
-  game-service:
+  game:
+    <<: *go-service
     build:
       context: .
       dockerfile: infra/docker/go.Dockerfile
-      args:
-        SERVICE_NAME: game
-    ports:
-      - "${GAME_SERVICE_PORT}:8083"
+      args: { SERVICE_NAME: game }
+    ports: ["8088:8088"]
     environment:
-      - PORT=${GAME_SERVICE_PORT}
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_ADDR=${REDIS_ADDR}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+      <<: *db-env
+      PORT: "8088"
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      RABBITMQ_URL: ${DOCKER_RABBITMQ_URL:-amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST}}
+      PUZZLE_ENGINE_URL: http://puzzle-engine:8087
+      MATCHMAKER_URL: http://matchmaker:8086
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  tutorial:
+    <<: *go-service
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args: { SERVICE_NAME: tutorial }
+    ports: ["8089:8089"]
+    environment:
+      <<: *db-env
+      PORT: "8089"
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  practice:
+    <<: *go-service
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args: { SERVICE_NAME: practice }
+    ports: ["8090:8090"]
+    environment:
+      <<: *db-env
+      PORT: "8090"
+      JWT_SECRET: ${JWT_SECRET}
+      PUZZLE_ENGINE_URL: http://puzzle-engine:8087
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  mastery:
+    <<: *go-service
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args: { SERVICE_NAME: mastery }
+    ports: ["8091:8091"]
+    environment:
+      <<: *db-env
+      PORT: "8091"
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: ${DOCKER_RABBITMQ_URL:-amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST}}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  social:
+    <<: *go-service
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args: { SERVICE_NAME: social }
+    ports: ["8092:8092"]
+    environment:
+      <<: *db-env
+      PORT: "8092"
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  cosmetics:
+    <<: *go-service
+    build:
+      context: .
+      dockerfile: infra/docker/go.Dockerfile
+      args: { SERVICE_NAME: cosmetics }
+    ports: ["8093:8093"]
+    environment:
+      <<: *db-env
+      PORT: "8093"
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    depends_on:
+      postgres: { condition: service_healthy }
 
 volumes:
   postgres_data:
