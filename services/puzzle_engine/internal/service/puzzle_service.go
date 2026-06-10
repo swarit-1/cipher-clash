@@ -157,32 +157,77 @@ func (s *PuzzleService) GeneratePuzzle(ctx context.Context, req *GeneratePuzzleR
 	return &clientPuzzle, nil
 }
 
-// GenerateMultiplePuzzles creates multiple puzzles for a match
-func (s *PuzzleService) GenerateMultiplePuzzles(ctx context.Context, count, minDiff, maxDiff, avgELO int, cipherTypes []string) ([]*Puzzle, error) {
+// matchCipherPool lists ciphers used in live matches: varied enough to be
+// interesting, all solvable by hand within a match timer.
+var matchCipherPool = []string{
+	"CAESAR", "VIGENERE", "RAIL_FENCE", "ATBASH", "ROT13",
+	"MORSE", "BINARY", "HEXADECIMAL", "BASE64", "XOR",
+	"SUBSTITUTION", "TRANSPOSITION", "AFFINE",
+}
+
+// GenerateMatchPuzzles creates a puzzle set for a live match, scaled to the
+// players' average ELO, with progressive difficulty and distinct cipher
+// types. Unlike GeneratePuzzle it RETURNS PLAINTEXT, so the game service can
+// validate submissions server-side. Internal callers only.
+func (s *PuzzleService) GenerateMatchPuzzles(ctx context.Context, count, avgELO int) ([]*Puzzle, error) {
+	if count < 1 {
+		count = 1
+	}
+	if count > 10 {
+		count = 10
+	}
+
+	baseDifficulty := s.calculateDifficultyFromELO(avgELO)
+
+	// Sample distinct cipher types for variety.
+	pool := make([]string, len(matchCipherPool))
+	copy(pool, matchCipherPool)
+	rand.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+
 	puzzles := make([]*Puzzle, 0, count)
-
 	for i := 0; i < count; i++ {
-		// Progressive difficulty
-		difficulty := minDiff + ((maxDiff - minDiff) * i / count)
-
-		// Select cipher type
-		cipherType := ""
-		if len(cipherTypes) > 0 {
-			cipherType = cipherTypes[rand.Intn(len(cipherTypes))]
+		// Progressive ramp: early puzzles slightly easier, later slightly harder.
+		difficulty := baseDifficulty - 1 + i/2
+		if difficulty < 1 {
+			difficulty = 1
+		}
+		if difficulty > 10 {
+			difficulty = 10
 		}
 
-		puzzle, err := s.GeneratePuzzle(ctx, &GeneratePuzzleRequest{
-			CipherType: cipherType,
-			Difficulty: difficulty,
-			PlayerELO:  avgELO,
-		})
+		cipherType := pool[i%len(pool)]
+		cipher := ciphers.GetCipher(cipherType)
+		if cipher == nil {
+			return nil, errors.NewInternalError(fmt.Sprintf("cipher %s not registered", cipherType))
+		}
+
+		config := cipher.GenerateKey(difficulty)
+		plaintext := sampleTexts[rand.Intn(len(sampleTexts))]
+		encryptedText, err := cipher.Encrypt(plaintext, config)
 		if err != nil {
-			return nil, err
+			return nil, errors.NewInternalServerError(err)
 		}
 
+		puzzle := &Puzzle{
+			ID:            uuid.New().String(),
+			CipherType:    cipherType,
+			Difficulty:    difficulty,
+			EncryptedText: encryptedText,
+			Plaintext:     plaintext,
+			Config:        config,
+		}
+		if err := s.savePuzzle(ctx, puzzle); err != nil {
+			s.log.Error("Failed to save match puzzle", map[string]interface{}{"error": err.Error()})
+		}
+		s.cache.Set(ctx, fmt.Sprintf("puzzle:%s", puzzle.ID), puzzle, cache.TTLPuzzle)
 		puzzles = append(puzzles, puzzle)
 	}
 
+	s.log.Info("Match puzzle set generated", map[string]interface{}{
+		"count":           len(puzzles),
+		"avg_elo":         avgELO,
+		"base_difficulty": baseDifficulty,
+	})
 	return puzzles, nil
 }
 

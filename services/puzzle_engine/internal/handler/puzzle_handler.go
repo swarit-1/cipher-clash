@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 
@@ -12,15 +13,52 @@ import (
 // PuzzleHandler handles HTTP requests for puzzles
 type PuzzleHandler struct {
 	puzzleService *service.PuzzleService
+	internalToken string
 	log           *logger.Logger
 }
 
 // NewPuzzleHandler creates a new puzzle handler
-func NewPuzzleHandler(puzzleService *service.PuzzleService, log *logger.Logger) *PuzzleHandler {
+func NewPuzzleHandler(puzzleService *service.PuzzleService, internalToken string, log *logger.Logger) *PuzzleHandler {
 	return &PuzzleHandler{
 		puzzleService: puzzleService,
+		internalToken: internalToken,
 		log:           log,
 	}
+}
+
+// RequireInternal guards service-to-service endpoints with a shared token.
+func (h *PuzzleHandler) RequireInternal(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get("X-Internal-Token")
+		if h.internalToken == "" || subtle.ConstantTimeCompare([]byte(token), []byte(h.internalToken)) != 1 {
+			h.respondError(w, errors.NewForbiddenError("Invalid internal token"))
+			return
+		}
+		next(w, r)
+	}
+}
+
+// GenerateMatchPuzzles returns a difficulty-ramped puzzle set WITH plaintext
+// for server-side validation. Internal: called by the game service.
+func (h *PuzzleHandler) GenerateMatchPuzzles(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Count     int `json:"count"`
+		PlayerELO int `json:"player_elo"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondError(w, errors.NewInvalidInputError("Invalid request body"))
+		return
+	}
+	if req.Count == 0 {
+		req.Count = 5
+	}
+
+	puzzles, err := h.puzzleService.GenerateMatchPuzzles(r.Context(), req.Count, req.PlayerELO)
+	if err != nil {
+		h.respondError(w, err)
+		return
+	}
+	h.respondJSON(w, http.StatusOK, map[string]interface{}{"puzzles": puzzles})
 }
 
 // GeneratePuzzle handles puzzle generation

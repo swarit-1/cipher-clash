@@ -12,6 +12,7 @@ import (
 	"github.com/swarit-1/cipher-clash/pkg/cache"
 	"github.com/swarit-1/cipher-clash/pkg/config"
 	"github.com/swarit-1/cipher-clash/pkg/db"
+	"github.com/swarit-1/cipher-clash/pkg/httpx"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
 	"github.com/swarit-1/cipher-clash/services/puzzle_engine/internal/handler"
 	"github.com/swarit-1/cipher-clash/services/puzzle_engine/internal/service"
@@ -63,8 +64,13 @@ func main() {
 	// Initialize services
 	puzzleService := service.NewPuzzleService(database, cacheClient, log)
 
+	internalToken := os.Getenv("INTERNAL_API_TOKEN")
+	if internalToken == "" {
+		log.Warn("INTERNAL_API_TOKEN not set; internal endpoints are disabled", nil)
+	}
+
 	// Initialize handlers
-	puzzleHandler := handler.NewPuzzleHandler(puzzleService, log)
+	puzzleHandler := handler.NewPuzzleHandler(puzzleService, internalToken, log)
 
 	// Setup HTTP router
 	mux := http.NewServeMux()
@@ -75,11 +81,14 @@ func main() {
 	mux.HandleFunc("/api/v1/puzzle/validate", puzzleHandler.ValidateSolution)
 	mux.HandleFunc("/api/v1/puzzle/get", puzzleHandler.GetPuzzle)
 
+	// Internal routes (service-to-service; responses include plaintext)
+	mux.HandleFunc("/internal/v1/puzzle/match-set", puzzleHandler.RequireInternal(puzzleHandler.GenerateMatchPuzzles))
+
 	// Create HTTP server
 	addr := "0.0.0.0:" + port
 	server := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      httpx.CORS(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

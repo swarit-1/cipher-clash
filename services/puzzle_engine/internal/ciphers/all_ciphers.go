@@ -40,9 +40,9 @@ func caesarShift(text string, shift int) string {
 	result := ""
 	for _, char := range text {
 		if char >= 'A' && char <= 'Z' {
-			result += string((int(char-'A')+shift+26)%26 + 'A')
+			result += string(rune((int(char-'A')+shift+26)%26 + 'A'))
 		} else if char >= 'a' && char <= 'z' {
-			result += string((int(char-'a')+shift+26)%26 + 'a')
+			result += string(rune((int(char-'a')+shift+26)%26 + 'a'))
 		} else {
 			result += string(char)
 		}
@@ -88,14 +88,14 @@ func vigenereProcess(text, key string, encrypt bool) string {
 			if !encrypt {
 				shift = -shift
 			}
-			result += string((int(char-'A')+shift+26)%26 + 'A')
+			result += string(rune((int(char-'A')+shift+26)%26 + 'A'))
 			keyIndex++
 		} else if char >= 'a' && char <= 'z' {
 			shift := int(key[keyIndex%len(key)] - 'A')
 			if !encrypt {
 				shift = -shift
 			}
-			result += string((int(char-'a')+shift+26)%26 + 'a')
+			result += string(rune((int(char-'a')+shift+26)%26 + 'a'))
 			keyIndex++
 		} else {
 			result += string(char)
