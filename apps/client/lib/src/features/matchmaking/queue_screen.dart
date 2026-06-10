@@ -1,11 +1,18 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
+import '../../data/match_models.dart';
+import '../../data/matchmaking_api.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cyberpunk_button.dart';
 import '../../widgets/glow_card.dart';
 
+/// Live matchmaking queue: joins the real queue, polls status until the
+/// matchmaker reports match_found, and falls back to a bot opponent when
+/// no human appears (offer at 25s, automatic at 40s).
 class QueueScreen extends StatefulWidget {
   final String gameMode;
 
@@ -18,89 +25,145 @@ class QueueScreen extends StatefulWidget {
   State<QueueScreen> createState() => _QueueScreenState();
 }
 
+const _botOfferAfterSeconds = 25;
+const _botAutoAfterSeconds = 40;
+
 class _QueueScreenState extends State<QueueScreen>
     with TickerProviderStateMixin {
   late AnimationController _searchController;
-  late AnimationController _expandController;
-  late Animation<double> _expandAnimation;
 
-  Timer? _timer;
+  Timer? _pollTimer;
+  Timer? _clockTimer;
+
   int _elapsedSeconds = 0;
-  int _playersInQueue = 0;
+  int _playersInQueue = 1;
   int _searchRange = 100;
   bool _matchFound = false;
+  bool _creatingBotMatch = false;
+  bool _leaving = false;
+  String? _error;
+  MatchArgs? _foundMatch;
 
   @override
   void initState() {
     super.initState();
-
-    // Search animation (rotating)
     _searchController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
-
-    // Search range expansion animation
-    _expandController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _expandAnimation = CurvedAnimation(
-      parent: _expandController,
-      curve: Curves.easeOutCubic,
-    );
-
-    // Start matchmaking simulation
     _startMatchmaking();
   }
 
-  void _startMatchmaking() {
-    // Simulate queue updates
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-
-      setState(() {
-        _elapsedSeconds++;
-        _playersInQueue = 5 + (_elapsedSeconds % 10);
-
-        // Expand search range every 15 seconds
-        if (_elapsedSeconds % 15 == 0 && _searchRange < 500) {
-          _searchRange += 50;
-          _expandController.forward(from: 0.0);
-        }
-
-        // Simulate match found after random time (15-30 seconds)
-        if (_elapsedSeconds > 15 && !_matchFound) {
-          _onMatchFound();
-        }
+  Future<void> _startMatchmaking() async {
+    // Bot matches skip the queue entirely.
+    if (widget.gameMode == 'BOT_MATCH') {
+      _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _elapsedSeconds++);
       });
+      _startBotMatch();
+      return;
+    }
+
+    final response = await MatchmakingApi.joinQueue(widget.gameMode);
+    if (!mounted) return;
+
+    // "Already in queue" is fine — we just resume polling.
+    if (!response.ok && response.status != 409) {
+      setState(() => _error = response.errorMessage);
+      return;
+    }
+
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _elapsedSeconds++);
+      if (_elapsedSeconds >= _botAutoAfterSeconds &&
+          !_matchFound &&
+          !_creatingBotMatch) {
+        _startBotMatch(auto: true);
+      }
     });
+
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) => _poll());
+    _poll();
   }
 
-  void _onMatchFound() {
+  Future<void> _poll() async {
+    if (_matchFound || _creatingBotMatch || _leaving) return;
+    final response = await MatchmakingApi.queueStatus();
+    if (!mounted || _matchFound || _creatingBotMatch) return;
+    if (!response.ok || response.json is! Map) return;
+
+    final data = (response.json as Map).cast<String, dynamic>();
+    final status = data['status'] as String?;
+
+    if (status == 'match_found') {
+      final opponent = (data['opponent'] as Map?)?.cast<String, dynamic>();
+      _onMatchFound(MatchArgs(
+        matchId: data['match_id'] as String? ?? '',
+        gameMode: data['game_mode'] as String? ?? widget.gameMode,
+        isRanked: data['is_ranked'] as bool? ?? true,
+        opponentUsername: opponent?['username'] as String?,
+        opponentElo: (opponent?['elo'] as num?)?.toInt(),
+      ));
+    } else if (status == 'searching') {
+      setState(() {
+        _playersInQueue = (data['players_in_queue'] as num?)?.toInt() ?? 1;
+        _searchRange = (data['search_range'] as num?)?.toInt() ?? 100;
+        _elapsedSeconds =
+            (data['wait_time_seconds'] as num?)?.toInt() ?? _elapsedSeconds;
+      });
+    }
+  }
+
+  Future<void> _startBotMatch({bool auto = false}) async {
+    if (_creatingBotMatch || _matchFound) return;
+    setState(() => _creatingBotMatch = true);
+
+    // Leave the human queue first so we cannot be double-matched.
+    await MatchmakingApi.leaveQueue();
+    final match = await MatchmakingApi.createBotMatch();
+    if (!mounted) return;
+
+    if (match == null || match.matchId.isEmpty) {
+      setState(() {
+        _creatingBotMatch = false;
+        _error = 'Could not start a bot match. Still searching…';
+      });
+      return;
+    }
+    _onMatchFound(match);
+  }
+
+  void _onMatchFound(MatchArgs match) {
+    if (_matchFound) return;
+    _pollTimer?.cancel();
+    _clockTimer?.cancel();
     setState(() {
       _matchFound = true;
+      _foundMatch = match;
     });
-
     HapticFeedback.heavyImpact();
 
-    // Navigate to game screen after animation
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    Future.delayed(const Duration(milliseconds: 1600), () {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/game');
+      Navigator.pushReplacementNamed(context, '/game', arguments: match);
     });
   }
 
-  void _cancelQueue() {
+  Future<void> _cancelQueue() async {
     HapticFeedback.mediumImpact();
-    Navigator.pop(context);
+    setState(() => _leaving = true);
+    _pollTimer?.cancel();
+    _clockTimer?.cancel();
+    await MatchmakingApi.leaveQueue();
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _pollTimer?.cancel();
+    _clockTimer?.cancel();
     _searchController.dispose();
-    _expandController.dispose();
     super.dispose();
   }
 
@@ -131,33 +194,83 @@ class _QueueScreenState extends State<QueueScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Search Animation
                 _buildSearchAnimation(),
-
-                const SizedBox(height: AppTheme.spacing6),
-
-                // Status Text
+                const SizedBox(height: AppTheme.spacing5),
                 _buildStatusText(),
-
-                const SizedBox(height: AppTheme.spacing4),
-
-                // Queue Stats
+                const SizedBox(height: AppTheme.spacing3),
+                if (_error != null) _buildError(),
                 _buildQueueStats(),
-
-                const SizedBox(height: AppTheme.spacing6),
-
-                // Search Range Indicator
+                const SizedBox(height: AppTheme.spacing4),
                 _buildSearchRange(),
-
                 const Spacer(),
-
-                // Cancel Button
+                if (_elapsedSeconds >= _botOfferAfterSeconds &&
+                    !_creatingBotMatch)
+                  _buildBotOffer(),
+                if (_creatingBotMatch) _buildBotSpinner(),
+                const SizedBox(height: AppTheme.spacing2),
                 _buildCancelButton(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildError() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spacing2),
+      child: Text(
+        _error!,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.neonRed,
+            ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildBotOffer() {
+    final secondsLeft =
+        (_botAutoAfterSeconds - _elapsedSeconds).clamp(0, _botAutoAfterSeconds);
+    return Column(
+      children: [
+        Text(
+          'No opponent yet — facing a training bot in ${secondsLeft}s',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppTheme.spacing1),
+        CyberpunkButton(
+          label: 'FIGHT A BOT NOW',
+          onPressed: () => _startBotMatch(),
+          variant: CyberpunkButtonVariant.secondary,
+          icon: Icons.smart_toy,
+          fullWidth: true,
+          padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing2),
+        ),
+      ],
+    ).animate().fadeIn(duration: 400.ms);
+  }
+
+  Widget _buildBotSpinner() {
+    return Column(
+      children: [
+        const SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        ),
+        const SizedBox(height: AppTheme.spacing1),
+        Text(
+          'Summoning opponent…',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+        ),
+      ],
     );
   }
 
@@ -182,7 +295,6 @@ class _QueueScreenState extends State<QueueScreen>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Outer ring
               Transform.rotate(
                 angle: _searchController.value * 2 * 3.14159,
                 child: Container(
@@ -197,8 +309,6 @@ class _QueueScreenState extends State<QueueScreen>
                   ),
                 ),
               ),
-
-              // Inner ring
               Transform.rotate(
                 angle: -_searchController.value * 2 * 3.14159,
                 child: Container(
@@ -213,8 +323,6 @@ class _QueueScreenState extends State<QueueScreen>
                   ),
                 ),
               ),
-
-              // Center icon
               Container(
                 width: 80,
                 height: 80,
@@ -233,10 +341,7 @@ class _QueueScreenState extends State<QueueScreen>
           ),
         );
       },
-    ).animate(onPlay: (controller) => controller.repeat()).shimmer(
-          duration: 2.seconds,
-          color: AppTheme.cyberBlue.withValues(alpha: 0.3),
-        );
+    );
   }
 
   Widget _buildStatusText() {
@@ -255,9 +360,7 @@ class _QueueScreenState extends State<QueueScreen>
             .fadeIn(duration: 1.seconds)
             .then()
             .fadeOut(duration: 1.seconds),
-
         const SizedBox(height: AppTheme.spacing2),
-
         Text(
           _formattedTime,
           style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -280,16 +383,17 @@ class _QueueScreenState extends State<QueueScreen>
           AppTheme.cyberBlue,
         ),
         _buildStatCard(
-          'Estimated Wait',
-          '${(30 - _elapsedSeconds).clamp(0, 30)}s',
-          Icons.timer,
+          'Game Mode',
+          _getGameModeTitle(),
+          Icons.bolt,
           AppTheme.neonPurple,
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
     return GlowCard(
       glowVariant: GlowCardVariant.none,
       child: SizedBox(
@@ -300,10 +404,11 @@ class _QueueScreenState extends State<QueueScreen>
             const SizedBox(height: AppTheme.spacing1),
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: color,
                     fontWeight: FontWeight.w700,
                   ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
@@ -318,70 +423,61 @@ class _QueueScreenState extends State<QueueScreen>
   }
 
   Widget _buildSearchRange() {
-    return AnimatedBuilder(
-      animation: _expandAnimation,
-      builder: (context, child) {
-        return Column(
+    return Column(
+      children: [
+        Text(
+          'Search Range',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+        ),
+        const SizedBox(height: AppTheme.spacing1),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Search Range',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
+              '±$_searchRange',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppTheme.electricYellow,
+                    fontWeight: FontWeight.w700,
                   ),
             ),
-            const SizedBox(height: AppTheme.spacing1),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '±$_searchRange',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: AppTheme.electricYellow,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(width: AppTheme.spacing1),
-                Text(
-                  'ELO',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacing1),
-            Container(
-              height: 6,
-              width: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                color: AppTheme.surfaceVariant,
-              ),
-              child: FractionallySizedBox(
-                widthFactor: (_searchRange / 500).clamp(0.0, 1.0),
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.electricGreen, AppTheme.electricYellow],
-                    ),
-                  ),
-                ),
-              ),
+            const SizedBox(width: AppTheme.spacing1),
+            Text(
+              'ELO',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
-        )
-            .animate(
-              target: _expandAnimation.value,
-            )
-            .scale(duration: 400.ms);
-      },
+        ),
+        const SizedBox(height: AppTheme.spacing1),
+        Container(
+          height: 6,
+          width: 200,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+            color: AppTheme.surfaceVariant,
+          ),
+          child: FractionallySizedBox(
+            widthFactor: (_searchRange / 500).clamp(0.0, 1.0),
+            alignment: Alignment.centerLeft,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                gradient: const LinearGradient(
+                  colors: [AppTheme.electricGreen, AppTheme.electricYellow],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildCancelButton() {
     return CyberpunkButton(
       label: 'CANCEL',
-      onPressed: _cancelQueue,
+      onPressed: _leaving ? null : _cancelQueue,
       variant: CyberpunkButtonVariant.danger,
       icon: Icons.close,
       fullWidth: true,
@@ -390,6 +486,8 @@ class _QueueScreenState extends State<QueueScreen>
   }
 
   Widget _buildMatchFoundScreen() {
+    final opponent = _foundMatch?.opponentUsername ?? 'OPPONENT';
+    final elo = _foundMatch?.opponentElo;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -399,7 +497,6 @@ class _QueueScreenState extends State<QueueScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Success icon
               Container(
                 width: 150,
                 height: 150,
@@ -408,8 +505,10 @@ class _QueueScreenState extends State<QueueScreen>
                   gradient: AppTheme.accentGradient,
                   boxShadow: AppTheme.glowElectricGreen(intensity: 2.0),
                 ),
-                child: const Icon(
-                  Icons.check_circle,
+                child: Icon(
+                  _foundMatch?.opponentIsBot == true
+                      ? Icons.smart_toy
+                      : Icons.check_circle,
                   size: 80,
                   color: Colors.black,
                 ),
@@ -418,10 +517,7 @@ class _QueueScreenState extends State<QueueScreen>
                   .scale(duration: 400.ms, curve: Curves.easeOutBack)
                   .then()
                   .shimmer(duration: 1.seconds),
-
               const SizedBox(height: AppTheme.spacing4),
-
-              // Match found text
               Text(
                 'MATCH FOUND!',
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
@@ -430,24 +526,27 @@ class _QueueScreenState extends State<QueueScreen>
                       letterSpacing: 4,
                     ),
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
-
               const SizedBox(height: AppTheme.spacing2),
-
+              Text(
+                elo != null ? 'vs $opponent  ·  $elo ELO' : 'vs $opponent',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ).animate().fadeIn(delay: 350.ms),
+              const SizedBox(height: AppTheme.spacing2),
               Text(
                 'Preparing battle...',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppTheme.textSecondary,
                     ),
-              ).animate().fadeIn(delay: 400.ms),
-
+              ).animate().fadeIn(delay: 450.ms),
               const SizedBox(height: AppTheme.spacing4),
-
-              // Loading indicator
-              SizedBox(
+              const SizedBox(
                 width: 200,
                 child: LinearProgressIndicator(
                   backgroundColor: AppTheme.surfaceVariant,
-                  valueColor: const AlwaysStoppedAnimation(AppTheme.electricGreen),
+                  valueColor: AlwaysStoppedAnimation(AppTheme.electricGreen),
                 ),
               ).animate().fadeIn(delay: 600.ms),
             ],
@@ -460,9 +559,11 @@ class _QueueScreenState extends State<QueueScreen>
   String _getGameModeTitle() {
     switch (widget.gameMode.toUpperCase()) {
       case 'RANKED_1V1':
-        return 'Ranked Match';
-      case 'CASUAL':
-        return 'Casual Match';
+        return 'Ranked';
+      case 'CASUAL_1V1':
+        return 'Casual';
+      case 'BOT_MATCH':
+        return 'Vs. Bot';
       default:
         return 'Matchmaking';
     }

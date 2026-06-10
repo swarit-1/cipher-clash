@@ -4,7 +4,8 @@ import 'features/auth/register_screen.dart';
 import 'features/menu/main_menu_screen.dart';
 import 'features/matchmaking/matchmaking_screen.dart';
 import 'features/matchmaking/queue_screen.dart';
-import 'features/game/enhanced_game_screen.dart';
+import 'data/match_models.dart';
+import 'features/game/match_screen.dart';
 import 'features/game/match_summary_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/leaderboard/leaderboard_screen.dart';
@@ -34,7 +35,6 @@ class AppRoutes {
       menu: (context) => const MainMenuScreen(),
       matchmaking: (context) => const MatchmakingScreen(),
       queue: (context) => const QueueScreen(),
-      game: (context) => const EnhancedGameScreen(),
       matchSummary: (context) => const MatchSummaryScreen(),
       profile: (context) => const ProfileScreen(),
       leaderboard: (context) => const LeaderboardScreen(),
@@ -72,7 +72,16 @@ class AppRoutes {
           },
         );
       case '/game':
-        return MaterialPageRoute(builder: (context) => const EnhancedGameScreen());
+        final matchArgs = settings.arguments;
+        if (matchArgs is! MatchArgs) {
+          // A match cannot start without its handoff payload.
+          return MaterialPageRoute(
+            builder: (context) => const MainMenuScreen(),
+          );
+        }
+        return MaterialPageRoute(
+          builder: (context) => MatchScreen(args: matchArgs),
+        );
       case '/match-summary':
         return MaterialPageRoute(
           builder: (context) {

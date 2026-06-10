@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cyberpunk_button.dart';
 import '../../widgets/glow_card.dart';
-import '../../services/matchmaker_service.dart';
+import '../../services/auth_service.dart';
 
 class MatchmakingScreen extends StatefulWidget {
   const MatchmakingScreen({Key? key}) : super(key: key);
@@ -26,18 +26,18 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
       'estimatedTime': '30-60s',
     },
     {
-      'id': 'CASUAL',
+      'id': 'CASUAL_1V1',
       'name': 'Casual Match',
-      'description': 'Practice without affecting your ranking',
+      'description': 'Head-to-head without affecting your ranking',
       'icon': Icons.sports_esports,
       'color': AppTheme.neonPurple,
       'estimatedTime': '20-40s',
     },
     {
-      'id': 'PRACTICE',
-      'name': 'Practice Mode',
-      'description': 'Solo practice with AI opponent',
-      'icon': Icons.school,
+      'id': 'BOT_MATCH',
+      'name': 'Vs. Training Bot',
+      'description': 'Instant unranked match against an AI opponent',
+      'icon': Icons.smart_toy,
       'color': AppTheme.electricGreen,
       'estimatedTime': 'Instant',
     },
@@ -204,7 +204,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                             ],
                           ),
                           Text(
-                            '1650 ELO',
+                            "${AuthService.currentUser?['elo_rating'] ?? '—'} ELO",
                             style: Theme.of(context)
                                 .textTheme
                                 .titleLarge
@@ -221,31 +221,14 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                 // Start Matchmaking Button
                 CyberpunkButton(
                   label: _getButtonLabel(),
-                  onPressed: () async {
+                  onPressed: () {
                     HapticFeedback.heavyImpact();
-
-                    // Join matchmaking queue
-                    final result = await MatchmakerService.joinQueue(
-                      gameMode: _selectedMode,
+                    // The queue screen owns joining/leaving the queue.
+                    Navigator.pushNamed(
+                      context,
+                      '/queue',
+                      arguments: {'mode': _selectedMode},
                     );
-
-                    if (context.mounted) {
-                      if (result['success']) {
-                        Navigator.pushNamed(
-                          context,
-                          '/queue',
-                          arguments: {'mode': _selectedMode},
-                        );
-                      } else {
-                        // Show error message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(result['message'] ?? 'Failed to join queue'),
-                            backgroundColor: AppTheme.neonRed,
-                          ),
-                        );
-                      }
-                    }
                   },
                   variant: CyberpunkButtonVariant.primary,
                   icon: Icons.play_arrow,
@@ -265,10 +248,10 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
     switch (_selectedMode) {
       case 'RANKED_1V1':
         return 'START RANKED MATCH';
-      case 'CASUAL':
+      case 'CASUAL_1V1':
         return 'START CASUAL MATCH';
-      case 'PRACTICE':
-        return 'START PRACTICE';
+      case 'BOT_MATCH':
+        return 'FIGHT THE BOT';
       default:
         return 'START MATCH';
     }
