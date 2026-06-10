@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
+
+import 'data/match_models.dart';
+import 'features/achievements/achievements_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
-import 'features/menu/main_menu_screen.dart';
-import 'features/matchmaking/matchmaking_screen.dart';
-import 'features/matchmaking/queue_screen.dart';
-import 'data/match_models.dart';
+import 'features/codex/cipher_codex.dart';
 import 'features/game/match_screen.dart';
 import 'features/game/match_summary_screen.dart';
-import 'features/profile/profile_screen.dart';
 import 'features/leaderboard/leaderboard_screen.dart';
-import 'features/achievements/achievements_screen.dart';
-import 'features/settings/settings_screen.dart';
+import 'features/matchmaking/matchmaking_screen.dart';
+import 'features/matchmaking/queue_screen.dart';
+import 'features/menu/main_menu_screen.dart';
 import 'features/practice/practice_lobby_screen.dart';
+import 'features/profile/profile_screen.dart';
+import 'features/replay/replay_screen.dart';
+import 'features/settings/settings_screen.dart';
+import 'features/shop/shop_screen.dart';
+import 'features/social/social_screen.dart';
+import 'features/spectate/spectate_screen.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -27,6 +33,10 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String social = '/social';
   static const String practice = '/practice';
+  static const String shop = '/shop';
+  static const String spectate = '/spectate';
+  static const String replay = '/replay';
+  static const String codex = '/codex';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -41,27 +51,15 @@ class AppRoutes {
       achievements: (context) => const AchievementsScreen(),
       settings: (context) => const SettingsScreen(),
       practice: (context) => const PracticeLobbyScreen(),
-      // Social screen is a placeholder
-      social: (context) => Scaffold(
-            appBar: AppBar(title: const Text('Social')),
-            body: const Center(child: Text('Social features coming soon!')),
-          ),
+      social: (context) => const SocialScreen(),
+      shop: (context) => const ShopScreen(),
+      spectate: (context) => const SpectateScreen(),
+      codex: (context) => const CodexScreen(),
     };
   }
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case '/login':
-        return MaterialPageRoute(builder: (context) => const LoginScreen());
-      case '/register':
-        return MaterialPageRoute(builder: (context) => const RegisterScreen());
-      case '/menu':
-        return MaterialPageRoute(builder: (context) => const MainMenuScreen());
-      case '/matchmaking':
-        return MaterialPageRoute(
-          builder: (context) => const MatchmakingScreen(),
-          settings: settings,
-        );
       case '/queue':
         return MaterialPageRoute(
           builder: (context) {
@@ -89,24 +87,15 @@ class AppRoutes {
             return MatchSummaryScreen(matchData: args);
           },
         );
-      case '/profile':
-        return MaterialPageRoute(builder: (context) => const ProfileScreen());
-      case '/leaderboard':
-        return MaterialPageRoute(builder: (context) => const LeaderboardScreen());
-      case '/achievements':
-        return MaterialPageRoute(builder: (context) => const AchievementsScreen());
-      case '/settings':
-        return MaterialPageRoute(builder: (context) => const SettingsScreen());
-      case '/practice':
-        return MaterialPageRoute(builder: (context) => const PracticeLobbyScreen());
-      case '/social':
+      case '/replay':
+        final matchId = settings.arguments;
         return MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(title: const Text('Social')),
-            body: const Center(child: Text('Social features coming soon!')),
-          ),
+          builder: (context) => matchId is String
+              ? ReplayScreen(matchId: matchId)
+              : const MainMenuScreen(),
         );
       default:
+        // Static routes in getRoutes() handle everything else.
         return null;
     }
   }

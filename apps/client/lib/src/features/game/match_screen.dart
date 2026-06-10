@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/token_store.dart';
+import '../codex/cipher_codex.dart';
 import '../../data/game_socket.dart';
 import '../../data/match_models.dart';
 import '../../theme/app_theme.dart';
@@ -470,6 +471,16 @@ class _MatchScreenState extends State<MatchScreen> {
                     const SizedBox(width: AppTheme.spacing1),
                     _tag('DIFFICULTY ${puzzle.difficulty}',
                         AppTheme.electricYellow),
+                    const SizedBox(width: 2),
+                    IconButton(
+                      tooltip: 'How this cipher works',
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 18,
+                      icon: const Icon(Icons.help_outline,
+                          color: AppTheme.textSecondary),
+                      onPressed: () =>
+                          showCipherExplainer(context, puzzle.cipherType),
+                    ),
                     const Spacer(),
                     Text(
                       'PUZZLE ${puzzle.index + 1}/$_totalPuzzles',

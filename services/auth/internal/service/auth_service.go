@@ -252,6 +252,18 @@ func (s *AuthService) ValidateToken(ctx context.Context, accessToken string) (*a
 	return claims, nil
 }
 
+// LookupUser finds a user by exact username and returns a sanitized
+// public profile (no email). Used by the friends UI.
+func (s *AuthService) LookupUser(ctx context.Context, username string) (*UserDTO, error) {
+	user, err := s.userRepo.FindByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+	dto := s.toUserDTO(user)
+	dto.Email = "" // never expose another user's email
+	return dto, nil
+}
+
 // GetUser retrieves user by ID
 func (s *AuthService) GetUser(ctx context.Context, userID uuid.UUID) (*UserDTO, error) {
 	// Try cache first

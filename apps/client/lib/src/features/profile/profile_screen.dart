@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
+import '../../data/matchmaking_api.dart';
+import '../../data/progression_api.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/async_view.dart';
 import '../../widgets/glow_card.dart';
 
+/// Operator profile: real account stats, match history from the game
+/// service, and per-cipher mastery progression.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
@@ -15,81 +21,17 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Mock user data - TODO: Replace with actual user state
-  final Map<String, dynamic> _userData = {
-    'username': 'CipherMaster',
-    'displayName': 'The Cipher Master',
-    'email': 'cipher@example.com',
-    'elo': 1650,
-    'rank': 'PLATINUM',
-    'level': 42,
-    'currentXp': 8750,
-    'nextLevelXp': 10000,
-    'totalGames': 245,
-    'wins': 156,
-    'losses': 89,
-    'winRate': 63.7,
-    'winStreak': 5,
-    'bestWinStreak': 12,
-    'favoriteCipher': 'Vigenere',
-    'totalSolveTime': 125430, // seconds
-    'fastestSolve': 18, // seconds
-    'joinDate': '2024-06-15',
-    'region': 'US',
-  };
-
-  final List<Map<String, dynamic>> _recentMatches = [
-    {
-      'opponent': 'CryptoNinja',
-      'result': 'WIN',
-      'score': '1500-0',
-      'cipher': 'Caesar',
-      'time': '45s',
-      'eloChange': '+15',
-    },
-    {
-      'opponent': 'CodeBreaker99',
-      'result': 'WIN',
-      'score': '1200-950',
-      'cipher': 'Vigenere',
-      'time': '1m 23s',
-      'eloChange': '+18',
-    },
-    {
-      'opponent': 'QuantumHacker',
-      'result': 'LOSS',
-      'score': '0-1500',
-      'cipher': 'RSA',
-      'time': '2m 15s',
-      'eloChange': '-12',
-    },
-  ];
-
-  final List<Map<String, dynamic>> _topAchievements = [
-    {
-      'name': 'Speed Demon',
-      'description': 'Solve a cipher in under 30 seconds',
-      'icon': Icons.flash_on,
-      'rarity': 'EPIC',
-    },
-    {
-      'name': 'Win Streak Master',
-      'description': 'Win 10 matches in a row',
-      'icon': Icons.local_fire_department,
-      'rarity': 'LEGENDARY',
-    },
-    {
-      'name': 'Caesar Champion',
-      'description': 'Solve 100 Caesar ciphers',
-      'icon': Icons.emoji_events,
-      'rarity': 'RARE',
-    },
-  ];
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic>? _user;
+  List<Map<String, dynamic>> _matches = const [];
+  List<Map<String, dynamic>> _mastery = const [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _load();
   }
 
   @override
@@ -98,8 +40,58 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  double get _xpProgress =>
-      (_userData['currentXp'] as int) / (_userData['nextLevelXp'] as int);
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final profile = await AuthService.fetchProfile();
+    if (!mounted) return;
+    if (profile == null) {
+      setState(() {
+        _loading = false;
+        _error = 'Could not load your profile';
+      });
+      return;
+    }
+
+    final historyResponse = await MatchmakingApi.matchHistory(limit: 20);
+    final masteryResponse = await ProgressionApi.masteryPoints();
+    if (!mounted) return;
+
+    List<Map<String, dynamic>> matches = const [];
+    if (historyResponse.ok && historyResponse.json is Map) {
+      final list = (historyResponse.json as Map)['matches'];
+      if (list is List) {
+        matches = list
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList();
+      }
+    }
+
+    List<Map<String, dynamic>> mastery = const [];
+    if (masteryResponse.ok) {
+      final body = masteryResponse.json;
+      final list = body is Map
+          ? (body['points'] ?? body['data'] ?? body['mastery'])
+          : body;
+      if (list is List) {
+        mastery = list
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList();
+      }
+    }
+
+    setState(() {
+      _loading = false;
+      _user = profile;
+      _matches = matches;
+      _mastery = mastery;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,533 +100,394 @@ class _ProfileScreenState extends State<ProfileScreen>
         title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              // TODO: Navigate to edit profile
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await AuthService.logout();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/login', (route) => false);
+              }
             },
           ),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Profile Header
-              _buildProfileHeader(),
-
-              // Tabs
-              _buildTabs(),
-
-              // Tab Content
-              SizedBox(
-                height: 600,
-                child: TabBarView(
-                  controller: _tabController,
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
+        child: SafeArea(
+          child: AsyncView(
+            loading: _loading,
+            error: _error,
+            onRetry: _load,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Column(
                   children: [
-                    _buildStatsTab(),
-                    _buildMatchHistoryTab(),
-                    _buildAchievementsTab(),
+                    _buildHeader(),
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: AppTheme.cyberBlue,
+                      unselectedLabelColor: AppTheme.textSecondary,
+                      indicatorColor: AppTheme.cyberBlue,
+                      tabs: const [
+                        Tab(text: 'STATS'),
+                        Tab(text: 'MATCHES'),
+                        Tab(text: 'MASTERY'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildStatsTab(),
+                          _buildMatchesTab(),
+                          _buildMasteryTab(),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spacing3),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppTheme.deepDark,
-            AppTheme.deepDark.withValues(alpha: 0),
+  Widget _buildHeader() {
+    final user = _user ?? const {};
+    final username = user['username'] as String? ?? '???';
+    final elo = user['elo_rating'] ?? 1200;
+    final tier = user['rank_tier'] as String? ?? 'UNRANKED';
+    final level = user['level'] ?? 1;
+    final coins = user['coins'] ?? 0;
+    final title = user['title'] as String?;
+
+    return Padding(
+      padding: const EdgeInsets.all(AppTheme.spacing2),
+      child: GlowCard(
+        glowVariant: GlowCardVariant.primary,
+        child: Row(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppTheme.primaryGradient,
+                boxShadow: AppTheme.glowCyberBlue(intensity: 1.0),
+              ),
+              child: Center(
+                child: Text(
+                  username.isNotEmpty ? username[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppTheme.spacing2),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    username,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  if (title != null && title.isNotEmpty)
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.neonPurple,
+                            fontStyle: FontStyle.italic,
+                          ),
+                    ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: AppTheme.spacing1,
+                    runSpacing: 4,
+                    children: [
+                      _chip('$elo ELO', AppTheme.electricGreen),
+                      _chip(tier, AppTheme.cyberBlue),
+                      _chip('LVL $level', AppTheme.neonPurple),
+                      _chip('🪙 $coins', AppTheme.electricYellow),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-      child: Column(
-        children: [
-          // Avatar and basic info
-          Row(
+    ).animate().fadeIn();
+  }
+
+  Widget _chip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsTab() {
+    final user = _user ?? const {};
+    final totalGames = (user['total_games'] as num?)?.toInt() ?? 0;
+    final wins = (user['wins'] as num?)?.toInt() ?? 0;
+    final losses = (user['losses'] as num?)?.toInt() ?? 0;
+    final winRate =
+        totalGames > 0 ? (wins / totalGames * 100).toStringAsFixed(1) : '—';
+    final fastest = (user['fastest_solve_ms'] as num?)?.toInt();
+
+    final stats = [
+      ('Matches Played', '$totalGames', Icons.sports_esports),
+      ('Wins', '$wins', Icons.emoji_events),
+      ('Losses', '$losses', Icons.close),
+      ('Win Rate', '$winRate%', Icons.percent),
+      (
+        'Current Streak',
+        '${user['win_streak'] ?? 0}',
+        Icons.local_fire_department
+      ),
+      ('Best Streak', '${user['best_win_streak'] ?? 0}', Icons.whatshot),
+      ('Puzzles Solved', '${user['puzzles_solved'] ?? 0}', Icons.extension),
+      (
+        'Fastest Solve',
+        fastest != null && fastest > 0
+            ? '${(fastest / 1000).toStringAsFixed(1)}s'
+            : '—',
+        Icons.bolt
+      ),
+      ('XP', '${user['xp'] ?? 0}', Icons.star),
+      ('Region', '${user['region'] ?? '—'}', Icons.public),
+    ];
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(AppTheme.spacing2),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 220,
+        mainAxisSpacing: AppTheme.spacing1,
+        crossAxisSpacing: AppTheme.spacing1,
+        childAspectRatio: 1.8,
+      ),
+      itemCount: stats.length,
+      itemBuilder: (context, index) {
+        final (label, value, icon) = stats[index];
+        return GlowCard(
+          glowVariant: GlowCardVariant.none,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Avatar
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppTheme.primaryGradient,
-                  boxShadow: AppTheme.glowCyberBlue(intensity: 1.5),
-                ),
-                child: const Icon(Icons.person, size: 50, color: Colors.black),
-              ).animate().scale(duration: 600.ms),
-
-              const SizedBox(width: AppTheme.spacing3),
-
-              // User info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _userData['username'],
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16, color: AppTheme.cyberBlue),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.textSecondary,
                           ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.getRankColor(_userData['rank'])
-                                .withValues(alpha: 0.2),
-                            borderRadius:
-                                BorderRadius.circular(AppTheme.radiusSmall),
-                            border: Border.all(
-                              color: AppTheme.getRankColor(_userData['rank']),
-                            ),
-                          ),
-                          child: Text(
-                            _userData['rank'],
-                            style:
-                                Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: AppTheme.getRankColor(_userData['rank']),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                          ),
-                        ),
-                        const SizedBox(width: AppTheme.spacing1),
-                        Text(
-                          'Level ${_userData['level']}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'monospace',
                     ),
-                    const SizedBox(height: AppTheme.spacing1),
-                    Text(
-                      '${_userData['elo']} ELO',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: AppTheme.cyberBlue,
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                  ],
-                ),
               ),
             ],
-          ).animate().fadeIn().slideX(begin: -0.1, end: 0),
+          ),
+        ).animate().fadeIn(delay: (30 * index).ms);
+      },
+    );
+  }
 
-          const SizedBox(height: AppTheme.spacing3),
+  Widget _buildMatchesTab() {
+    if (_matches.isEmpty) {
+      return const AsyncView(
+        loading: false,
+        empty: true,
+        emptyIcon: Icons.history,
+        emptyTitle: 'No matches yet',
+        emptyMessage: 'Your completed matches will appear here.',
+        child: SizedBox.shrink(),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppTheme.spacing2),
+      itemCount: _matches.length,
+      itemBuilder: (context, index) {
+        final match = _matches[index];
+        final won = match['won'] == true;
+        final draw = (match['winner_id'] as String? ?? '').isEmpty;
+        final eloChange = (match['elo_change'] as num?)?.toInt() ?? 0;
+        final color = draw
+            ? AppTheme.electricYellow
+            : (won ? AppTheme.electricGreen : AppTheme.neonRed);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppTheme.spacing1),
+          child: GlowCard(
+            glowVariant: GlowCardVariant.none,
+            onTap: match['has_replay'] == true
+                ? () => Navigator.pushNamed(context, '/replay',
+                    arguments: match['match_id'])
+                : null,
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: Center(
+                    child: Text(
+                      draw ? '=' : (won ? 'W' : 'L'),
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacing2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'vs ${match['opponent_username'] ?? '???'}',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      Text(
+                        '${match['game_mode'] ?? ''} · '
+                        '${match['your_score'] ?? 0}-${match['opponent_score'] ?? 0}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.textTertiary,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (eloChange != 0)
+                  Text(
+                    '${eloChange > 0 ? '+' : ''}$eloChange',
+                    style: TextStyle(
+                      color: eloChange > 0
+                          ? AppTheme.electricGreen
+                          : AppTheme.neonRed,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                if (match['has_replay'] == true) ...[
+                  const SizedBox(width: AppTheme.spacing1),
+                  const Icon(Icons.play_circle_outline,
+                      color: AppTheme.cyberBlue, size: 20),
+                ],
+              ],
+            ),
+          ),
+        ).animate().fadeIn(delay: (30 * (index % 10)).ms);
+      },
+    );
+  }
 
-          // Level progress
-          GlowCard(
-            glowVariant: GlowCardVariant.primary,
+  Widget _buildMasteryTab() {
+    if (_mastery.isEmpty) {
+      return const AsyncView(
+        loading: false,
+        empty: true,
+        emptyIcon: Icons.auto_graph,
+        emptyTitle: 'No cipher mastery yet',
+        emptyMessage:
+            'Solve puzzles in matches to earn per-cipher mastery XP.',
+        child: SizedBox.shrink(),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppTheme.spacing2),
+      itemCount: _mastery.length,
+      itemBuilder: (context, index) {
+        final m = _mastery[index];
+        final level = (m['level'] as num?)?.toInt() ?? 1;
+        final points = (m['total_points'] as num?)?.toInt() ?? 0;
+        final solved = (m['puzzles_solved'] as num?)?.toInt() ?? 0;
+        final intoLevel = points % 100;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppTheme.spacing1),
+          child: GlowCard(
+            glowVariant: GlowCardVariant.none,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Level Progress',
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                    Text(
-                      '${_userData['currentXp']} / ${_userData['nextLevelXp']} XP',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: AppTheme.electricGreen,
+                      m['cipher_type'] as String? ?? '???',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
                           ),
                     ),
+                    const Spacer(),
+                    _chip('LVL $level', AppTheme.neonPurple),
+                    const SizedBox(width: AppTheme.spacing1),
+                    _chip('$solved solved', AppTheme.cyberBlue),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacing1),
+                const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   child: LinearProgressIndicator(
-                    value: _xpProgress,
+                    value: intoLevel / 100,
+                    minHeight: 6,
                     backgroundColor: AppTheme.surfaceVariant,
-                    valueColor: const AlwaysStoppedAnimation(AppTheme.electricGreen),
-                    minHeight: 8,
+                    valueColor:
+                        const AlwaysStoppedAnimation(AppTheme.neonPurple),
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$intoLevel / 100 XP to level ${level + 1}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textTertiary,
+                      ),
                 ),
               ],
             ),
-          ).animate().fadeIn(delay: 200.ms),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabs() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacing3),
-      decoration: BoxDecoration(
-        color: AppTheme.darkNavy,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: Colors.black,
-        unselectedLabelColor: AppTheme.textSecondary,
-        tabs: const [
-          Tab(text: 'Stats'),
-          Tab(text: 'Matches'),
-          Tab(text: 'Achievements'),
-        ],
-      ),
-    ).animate().fadeIn(delay: 300.ms);
-  }
-
-  Widget _buildStatsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppTheme.spacing3),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Career Statistics',
-            style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const SizedBox(height: AppTheme.spacing2),
-
-          // Win/Loss Record
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Wins',
-                  '${_userData['wins']}',
-                  Icons.emoji_events,
-                  AppTheme.electricGreen,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacing2),
-              Expanded(
-                child: _buildStatCard(
-                  'Losses',
-                  '${_userData['losses']}',
-                  Icons.close,
-                  AppTheme.neonRed,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spacing2),
-
-          // Additional stats
-          _buildStatCard(
-            'Win Rate',
-            '${_userData['winRate']}%',
-            Icons.bar_chart,
-            AppTheme.cyberBlue,
-            fullWidth: true,
-          ),
-
-          const SizedBox(height: AppTheme.spacing2),
-
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Current Streak',
-                  '${_userData['winStreak']}',
-                  Icons.local_fire_department,
-                  AppTheme.electricYellow,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacing2),
-              Expanded(
-                child: _buildStatCard(
-                  'Best Streak',
-                  '${_userData['bestWinStreak']}',
-                  Icons.stars,
-                  AppTheme.neonPurple,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spacing3),
-
-          Text(
-            'Performance Metrics',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: AppTheme.spacing2),
-
-          _buildStatCard(
-            'Fastest Solve',
-            '${_userData['fastestSolve']}s',
-            Icons.speed,
-            AppTheme.electricGreen,
-            fullWidth: true,
-          ),
-
-          const SizedBox(height: AppTheme.spacing2),
-
-          _buildStatCard(
-            'Favorite Cipher',
-            _userData['favoriteCipher'],
-            Icons.favorite,
-            AppTheme.cyberBlue,
-            fullWidth: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color, {
-    bool fullWidth = false,
-  }) {
-    return GlowCard(
-      glowVariant: GlowCardVariant.none,
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: fullWidth ? 32 : 28),
-          const SizedBox(height: AppTheme.spacing1),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMatchHistoryTab() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppTheme.spacing3),
-      itemCount: _recentMatches.length,
-      separatorBuilder: (context, index) =>
-          const SizedBox(height: AppTheme.spacing2),
-      itemBuilder: (context, index) {
-        final match = _recentMatches[index];
-        final isWin = match['result'] == 'WIN';
-
-        return GlowCard(
-          glowVariant: isWin ? GlowCardVariant.success : GlowCardVariant.none,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Result badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (isWin ? AppTheme.electricGreen : AppTheme.neonRed)
-                          .withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                      border: Border.all(
-                        color: isWin ? AppTheme.electricGreen : AppTheme.neonRed,
-                      ),
-                    ),
-                    child: Text(
-                      match['result'],
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: isWin ? AppTheme.electricGreen : AppTheme.neonRed,
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // ELO change
-                  Text(
-                    match['eloChange'],
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: isWin ? AppTheme.electricGreen : AppTheme.neonRed,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppTheme.spacing1),
-
-              // Opponent
-              Row(
-                children: [
-                  const Icon(Icons.person, size: 16, color: AppTheme.textSecondary),
-                  const SizedBox(width: 4),
-                  Text(
-                    'vs ${match['opponent']}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppTheme.spacing1),
-
-              // Match details
-              Row(
-                children: [
-                  _buildMatchDetail(Icons.lock, match['cipher']),
-                  const SizedBox(width: AppTheme.spacing2),
-                  _buildMatchDetail(Icons.timer, match['time']),
-                  const Spacer(),
-                  Text(
-                    match['score'],
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
+        ).animate().fadeIn(delay: (30 * (index % 10)).ms);
       },
     );
-  }
-
-  Widget _buildMatchDetail(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: AppTheme.textTertiary),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textTertiary,
-              ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAchievementsTab() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppTheme.spacing3),
-      itemCount: _topAchievements.length,
-      separatorBuilder: (context, index) =>
-          const SizedBox(height: AppTheme.spacing2),
-      itemBuilder: (context, index) {
-        final achievement = _topAchievements[index];
-        final rarity = achievement['rarity'] as String;
-        final color = _getRarityColor(rarity);
-
-        return GlowCard(
-          glowVariant: rarity == 'LEGENDARY'
-              ? GlowCardVariant.secondary
-              : GlowCardVariant.none,
-          child: Row(
-            children: [
-              // Icon
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  border: Border.all(color: color, width: 2),
-                ),
-                child: Icon(
-                  achievement['icon'] as IconData,
-                  color: color,
-                  size: 32,
-                ),
-              ),
-
-              const SizedBox(width: AppTheme.spacing2),
-
-              // Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      achievement['name'],
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      achievement['description'],
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                      ),
-                      child: Text(
-                        rarity,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Color _getRarityColor(String rarity) {
-    switch (rarity) {
-      case 'LEGENDARY':
-        return AppTheme.neonPurple;
-      case 'EPIC':
-        return AppTheme.cyberBlue;
-      case 'RARE':
-        return AppTheme.electricGreen;
-      default:
-        return AppTheme.textSecondary;
-    }
   }
 }

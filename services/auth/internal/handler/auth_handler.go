@@ -142,6 +142,22 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// LookupUser returns a public profile by exact username.
+// GET /api/v1/auth/users/lookup?username=...
+func (h *AuthHandler) LookupUser(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		h.respondError(w, errors.NewInvalidInputError("username is required"))
+		return
+	}
+	user, err := h.authService.LookupUser(r.Context(), username)
+	if err != nil {
+		h.respondError(w, err)
+		return
+	}
+	h.respondJSON(w, http.StatusOK, user)
+}
+
 // Health check endpoint
 func (h *AuthHandler) Health(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, map[string]interface{}{

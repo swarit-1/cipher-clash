@@ -95,6 +95,7 @@ func main() {
 	mux.HandleFunc("/api/v1/auth/profile", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(authHandler.GetProfile))))
 	mux.HandleFunc("/api/v1/auth/profile/update", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(authHandler.UpdateProfile))))
 	mux.HandleFunc("/api/v1/auth/logout", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(authHandler.Logout))))
+	mux.HandleFunc("/api/v1/auth/users/lookup", authMiddleware.CORS(authMiddleware.Logging(authMiddleware.RequireAuth(authHandler.LookupUser))))
 
 	// Create HTTP server
 	addr := "0.0.0.0:" + port

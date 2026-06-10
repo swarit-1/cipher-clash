@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
+import '../../core/token_store.dart';
+import '../../data/matchmaking_api.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/async_view.dart';
 import '../../widgets/glow_card.dart';
 
+/// Global ELO leaderboard backed by the matchmaker service.
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({Key? key}) : super(key: key);
 
@@ -11,32 +15,43 @@ class LeaderboardScreen extends StatefulWidget {
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
-class _LeaderboardScreenState extends State<LeaderboardScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  // Mock leaderboard data - TODO: Replace with API call
-  final List<Map<String, dynamic>> _globalLeaderboard = [
-    {'rank': 1, 'username': 'CryptoGod', 'elo': 2150, 'tier': 'DIAMOND', 'wins': 450},
-    {'rank': 2, 'username': 'CipherQueen', 'elo': 2080, 'tier': 'DIAMOND', 'wins': 398},
-    {'rank': 3, 'username': 'DecryptKing', 'elo': 2020, 'tier': 'DIAMOND', 'wins': 375},
-    {'rank': 4, 'username': 'CodeBreaker', 'elo': 1950, 'tier': 'PLATINUM', 'wins': 342},
-    {'rank': 5, 'username': 'CipherNinja', 'elo': 1890, 'tier': 'PLATINUM', 'wins': 310},
-    {'rank': 6, 'username': 'QuantumHack', 'elo': 1825, 'tier': 'PLATINUM', 'wins': 289},
-    {'rank': 7, 'username': 'CryptoWizard', 'elo': 1780, 'tier': 'PLATINUM', 'wins': 265},
-    {'rank': 8, 'username': 'CipherMaster', 'elo': 1650, 'tier': 'PLATINUM', 'wins': 156, 'isCurrentUser': true},
-  ];
+class _LeaderboardScreenState extends State<LeaderboardScreen> {
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _entries = const [];
+  String _region = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _load();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final response =
+        await MatchmakingApi.leaderboard(limit: 50, region: _region);
+    if (!mounted) return;
+    if (!response.ok || response.json is! Map) {
+      setState(() {
+        _loading = false;
+        _error = response.errorMessage;
+      });
+      return;
+    }
+    final list = (response.json as Map)['entries'];
+    setState(() {
+      _loading = false;
+      _entries = list is List
+          ? list
+              .whereType<Map>()
+              .map((e) => e.cast<String, dynamic>())
+              .toList()
+          : const [];
+    });
   }
 
   @override
@@ -46,377 +61,209 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         title: const Text('Leaderboard'),
         actions: [
           IconButton(
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              // TODO: Refresh leaderboard
-            },
+            onPressed: _loading ? null : _load,
           ),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.backgroundGradient,
-        ),
-        child: Column(
-          children: [
-            // Top 3 Podium
-            _buildPodium(),
-
-            // Tabs
-            _buildTabs(),
-
-            // Leaderboard List
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Column(
                 children: [
-                  _buildLeaderboardList(_globalLeaderboard),
-                  _buildLeaderboardList(_globalLeaderboard), // Regional
-                  _buildLeaderboardList(_globalLeaderboard.take(3).toList()), // Friends
+                  _buildRegionTabs(),
+                  Expanded(
+                    child: AsyncView(
+                      loading: _loading,
+                      error: _error,
+                      onRetry: _load,
+                      empty: _entries.isEmpty,
+                      emptyIcon: Icons.leaderboard,
+                      emptyTitle: 'No ranked players yet',
+                      emptyMessage:
+                          'Play a ranked match to claim the first spot on the board.',
+                      child: RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(AppTheme.spacing2),
+                          children: [
+                            if (_entries.length >= 3) _buildPodium(),
+                            const SizedBox(height: AppTheme.spacing2),
+                            if (_entries.length >= 3)
+                              ..._entries.skip(3).map(_buildRow)
+                            else
+                              ..._entries.map(_buildRow),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRegionTabs() {
+    const regions = ['', 'US', 'EU', 'ASIA'];
+    return Padding(
+      padding: const EdgeInsets.all(AppTheme.spacing2),
+      child: Row(
+        children: regions.map((r) {
+          final selected = _region == r;
+          return Padding(
+            padding: const EdgeInsets.only(right: AppTheme.spacing1),
+            child: ChoiceChip(
+              label: Text(r.isEmpty ? 'GLOBAL' : r),
+              selected: selected,
+              onSelected: (_) {
+                setState(() => _region = r);
+                _load();
+              },
+              selectedColor: AppTheme.cyberBlue.withValues(alpha: 0.25),
+              labelStyle: TextStyle(
+                color: selected ? AppTheme.cyberBlue : AppTheme.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildPodium() {
-    if (_globalLeaderboard.length < 3) return const SizedBox.shrink();
-
-    final first = _globalLeaderboard[0];
-    final second = _globalLeaderboard[1];
-    final third = _globalLeaderboard[2];
-
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spacing3),
+    final first = _entries[0];
+    final second = _entries[1];
+    final third = _entries[2];
+    return SizedBox(
+      height: 210,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 2nd Place
-          _buildPodiumCard(second, 2, 120, AppTheme.silverGray)
-              .animate()
-              .fadeIn(delay: 200.ms)
-              .slideY(begin: 0.3, end: 0),
-
-          const SizedBox(width: AppTheme.spacing2),
-
-          // 1st Place
-          _buildPodiumCard(first, 1, 150, AppTheme.goldYellow)
-              .animate()
-              .fadeIn(delay: 100.ms)
-              .slideY(begin: 0.3, end: 0)
-              .shimmer(delay: 500.ms, duration: 2.seconds),
-
-          const SizedBox(width: AppTheme.spacing2),
-
-          // 3rd Place
-          _buildPodiumCard(third, 3, 100, AppTheme.bronzeBrown)
-              .animate()
-              .fadeIn(delay: 300.ms)
-              .slideY(begin: 0.3, end: 0),
+          Expanded(
+              child: _podiumColumn(second, 2, 130, const Color(0xFFC0C0C0))),
+          const SizedBox(width: AppTheme.spacing1),
+          Expanded(
+              child: _podiumColumn(first, 1, 170, AppTheme.electricYellow)),
+          const SizedBox(width: AppTheme.spacing1),
+          Expanded(child: _podiumColumn(third, 3, 105, AppTheme.bronzeBrown)),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 350.ms);
   }
 
-  Widget _buildPodiumCard(
-    Map<String, dynamic> player,
-    int rank,
-    double height,
-    Color color,
-  ) {
-    return SizedBox(
-      width: 100,
-      child: Column(
-        children: [
-          // Avatar with crown for 1st
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: rank == 1 ? 80 : 60,
-                height: rank == 1 ? 80 : 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.2),
-                  border: Border.all(color: color, width: 3),
-                  boxShadow: rank == 1
-                      ? [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Icon(
-                  Icons.person,
-                  color: color,
-                  size: rank == 1 ? 40 : 30,
-                ),
+  Widget _podiumColumn(
+      Map<String, dynamic> entry, int place, double height, Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(
+          entry['username'] as String? ?? '???',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
-              if (rank == 1)
-                Positioned(
-                  top: -15,
-                  left: 0,
-                  right: 0,
-                  child: Icon(
-                    Icons.emoji_events,
-                    color: AppTheme.goldYellow,
-                    size: 32,
-                  ),
-                ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spacing1),
-
-          // Username
-          Text(
-            player['username'],
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-
-          // ELO
-          Text(
-            '${player['elo']}',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-
-          const SizedBox(height: AppTheme.spacing1),
-
-          // Podium base
-          Container(
-            height: height,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  color.withValues(alpha: 0.3),
-                  color.withValues(alpha: 0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(AppTheme.radiusMedium),
-              ),
-              border: Border.all(color: color, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                '#$rank',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabs() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacing3),
-      decoration: BoxDecoration(
-        color: AppTheme.darkNavy,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          overflow: TextOverflow.ellipsis,
         ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: Colors.black,
-        unselectedLabelColor: AppTheme.textSecondary,
-        tabs: const [
-          Tab(text: 'Global'),
-          Tab(text: 'Regional'),
-          Tab(text: 'Friends'),
-        ],
-      ),
-    ).animate().fadeIn(delay: 400.ms);
-  }
-
-  Widget _buildLeaderboardList(List<Map<String, dynamic>> players) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        HapticFeedback.mediumImpact();
-        await Future.delayed(const Duration(seconds: 1));
-      },
-      color: AppTheme.cyberBlue,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(AppTheme.spacing3),
-        itemCount: players.length,
-        separatorBuilder: (context, index) => const SizedBox(height: AppTheme.spacing2),
-        itemBuilder: (context, index) {
-          final player = players[index];
-          final isCurrentUser = player['isCurrentUser'] == true;
-
-          return GlowCard(
-            glowVariant: isCurrentUser ? GlowCardVariant.primary : GlowCardVariant.none,
-            child: Row(
-              children: [
-                // Rank
-                SizedBox(
-                  width: 50,
-                  child: Text(
-                    '#${player['rank']}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: _getRankColor(player['rank']),
-                          fontWeight: FontWeight.w900,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-                const SizedBox(width: AppTheme.spacing2),
-
-                // Avatar
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isCurrentUser
-                        ? AppTheme.cyberBlue.withValues(alpha: 0.2)
-                        : AppTheme.surfaceVariant,
-                    border: Border.all(
-                      color: isCurrentUser ? AppTheme.cyberBlue : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    color: isCurrentUser ? AppTheme.cyberBlue : AppTheme.textSecondary,
-                  ),
-                ),
-
-                const SizedBox(width: AppTheme.spacing2),
-
-                // Player info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              player['username'],
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: isCurrentUser ? AppTheme.cyberBlue : null,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isCurrentUser)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.cyberBlue.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                              ),
-                              child: Text(
-                                'YOU',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: AppTheme.cyberBlue,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.getRankColor(player['tier'])
-                                  .withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                              border: Border.all(
-                                color: AppTheme.getRankColor(player['tier']),
-                              ),
-                            ),
-                            child: Text(
-                              player['tier'],
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: AppTheme.getRankColor(player['tier']),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.spacing1),
-                          Text(
-                            '${player['wins']} wins',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.textTertiary,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ELO
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${player['elo']}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: AppTheme.cyberBlue,
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    Text(
-                      'ELO',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
+        Text(
+          '${entry['elo_rating'] ?? '—'}',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'monospace',
+              ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: height,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                color.withValues(alpha: 0.55),
+                color.withValues(alpha: 0.12)
               ],
             ),
-          ).animate().fadeIn(delay: (500 + (index * 50)).ms);
-        },
-      ),
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppTheme.radiusMedium)),
+            border: Border.all(color: color.withValues(alpha: 0.6)),
+          ),
+          child: Center(
+            child: Text(
+              '$place',
+              style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Color _getRankColor(int rank) {
-    if (rank == 1) return AppTheme.goldYellow;
-    if (rank == 2) return AppTheme.silverGray;
-    if (rank == 3) return AppTheme.bronzeBrown;
-    return AppTheme.cyberBlue;
+  Widget _buildRow(Map<String, dynamic> entry) {
+    final isYou = entry['user_id'] == TokenStore.userId;
+    final rank = entry['rank'] ?? '—';
+    final winRate = entry['win_rate'];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.spacing1),
+      child: GlowCard(
+        glowVariant: isYou ? GlowCardVariant.primary : GlowCardVariant.none,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 44,
+              child: Text(
+                '#$rank',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontFamily: 'monospace',
+                    ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${entry['username'] ?? '???'}${isYou ? '  (you)' : ''}',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isYou ? AppTheme.cyberBlue : AppTheme.textPrimary,
+                        ),
+                  ),
+                  Text(
+                    '${entry['rank_tier'] ?? 'UNRANKED'} · ${entry['wins'] ?? 0}W ${entry['losses'] ?? 0}L'
+                    '${winRate != null ? ' · $winRate%' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textTertiary,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${entry['elo_rating'] ?? '—'}',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.electricGreen,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'monospace',
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
