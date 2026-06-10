@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/swarit-1/cipher-clash/pkg/auth"
 	"github.com/swarit-1/cipher-clash/pkg/cache"
 	"github.com/swarit-1/cipher-clash/pkg/config"
 	"github.com/swarit-1/cipher-clash/pkg/db"
+	"github.com/swarit-1/cipher-clash/pkg/httpx"
 	"github.com/swarit-1/cipher-clash/pkg/logger"
 	"github.com/swarit-1/cipher-clash/pkg/messaging"
 	"github.com/swarit-1/cipher-clash/services/matchmaker/internal/handler"
@@ -87,24 +89,36 @@ func main() {
 	// Initialize services
 	matchmakerService := service.NewMatchmakerService(database, cacheClient, matchmakingQueue, publisher, log)
 
+	// JWT validation shares the secret issued by the auth service.
+	jwtManager := auth.NewJWTManager(cfg.JWT)
+	internalToken := os.Getenv("INTERNAL_API_TOKEN")
+	if internalToken == "" {
+		log.Warn("INTERNAL_API_TOKEN not set; internal endpoints are disabled", nil)
+	}
+
 	// Initialize handlers
-	matchmakerHandler := handler.NewMatchmakerHandler(matchmakerService, log)
+	matchmakerHandler := handler.NewMatchmakerHandler(matchmakerService, jwtManager, internalToken, log)
 
 	// Setup HTTP router
 	mux := http.NewServeMux()
 
 	// Public routes
 	mux.HandleFunc("/health", matchmakerHandler.Health)
-	mux.HandleFunc("/api/v1/matchmaker/join", matchmakerHandler.JoinQueue)
-	mux.HandleFunc("/api/v1/matchmaker/leave", matchmakerHandler.LeaveQueue)
-	mux.HandleFunc("/api/v1/matchmaker/status", matchmakerHandler.GetQueueStatus)
 	mux.HandleFunc("/api/v1/matchmaker/leaderboard", matchmakerHandler.GetLeaderboard)
+
+	// Authenticated routes
+	mux.HandleFunc("/api/v1/matchmaker/join", matchmakerHandler.RequireAuth(matchmakerHandler.JoinQueue))
+	mux.HandleFunc("/api/v1/matchmaker/leave", matchmakerHandler.RequireAuth(matchmakerHandler.LeaveQueue))
+	mux.HandleFunc("/api/v1/matchmaker/status", matchmakerHandler.RequireAuth(matchmakerHandler.GetQueueStatus))
+
+	// Internal routes (service-to-service)
+	mux.HandleFunc("/internal/v1/ratings/update", matchmakerHandler.RequireInternal(matchmakerHandler.UpdateRatings))
 
 	// Create HTTP server
 	addr := "0.0.0.0:" + port
 	server := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      httpx.CORS(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
