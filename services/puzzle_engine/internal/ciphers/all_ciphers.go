@@ -454,7 +454,6 @@ func (x *XORCipher) GenerateKey(difficulty int) map[string]interface{} {
 	return map[string]interface{}{"key": key}
 }
 
-
 // ============================================================================
 // 8. BASE64 CIPHER
 // ============================================================================
@@ -532,6 +531,7 @@ func (m *MorseCipher) GenerateKey(difficulty int) map[string]interface{} {
 // ============================================================================
 
 type BinaryCipher struct{}
+
 func (b *BinaryCipher) Name() string { return TypeBinary }
 func (b *BinaryCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
 	result := ""
@@ -555,6 +555,7 @@ func (b *BinaryCipher) GenerateKey(difficulty int) map[string]interface{} {
 }
 
 type HexadecimalCipher struct{}
+
 func (h *HexadecimalCipher) Name() string { return TypeHexadecimal }
 func (h *HexadecimalCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
 	return hex.EncodeToString([]byte(plaintext)), nil
@@ -568,6 +569,7 @@ func (h *HexadecimalCipher) GenerateKey(difficulty int) map[string]interface{} {
 }
 
 type ROT13Cipher struct{}
+
 func (r *ROT13Cipher) Name() string { return TypeROT13 }
 func (r *ROT13Cipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
 	return caesarShift(plaintext, 13), nil
@@ -580,6 +582,7 @@ func (r *ROT13Cipher) GenerateKey(difficulty int) map[string]interface{} {
 }
 
 type AtbashCipher struct{}
+
 func (a *AtbashCipher) Name() string { return TypeAtbash }
 func (a *AtbashCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
 	result := ""
@@ -602,6 +605,7 @@ func (a *AtbashCipher) GenerateKey(difficulty int) map[string]interface{} {
 }
 
 type BookCipherImpl struct{}
+
 func (b *BookCipherImpl) Name() string { return TypeBookCipher }
 func (b *BookCipherImpl) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
 	book := strings.ToUpper(cfgString(config, "book"))
@@ -642,6 +646,7 @@ func (b *BookCipherImpl) GenerateKey(difficulty int) map[string]interface{} {
 }
 
 type RSASimpleCipher struct{}
+
 func (r *RSASimpleCipher) Name() string { return TypeRSASimple }
 func (r *RSASimpleCipher) Encrypt(plaintext string, config map[string]interface{}) (string, error) {
 	e := cfgInt64(config, "e")

@@ -10,25 +10,25 @@ type Cipher interface {
 
 // CipherType constants
 const (
-	TypeCaesar       = "CAESAR"
-	TypeVigenere     = "VIGENERE"
-	TypeRailFence    = "RAIL_FENCE"
-	TypePlayfair     = "PLAYFAIR"
-	TypeSubstitution = "SUBSTITUTION"
+	TypeCaesar        = "CAESAR"
+	TypeVigenere      = "VIGENERE"
+	TypeRailFence     = "RAIL_FENCE"
+	TypePlayfair      = "PLAYFAIR"
+	TypeSubstitution  = "SUBSTITUTION"
 	TypeTransposition = "TRANSPOSITION"
-	TypeXOR          = "XOR"
-	TypeBase64       = "BASE64"
-	TypeMorse        = "MORSE"
-	TypeBinary       = "BINARY"
-	TypeHexadecimal  = "HEXADECIMAL"
-	TypeROT13        = "ROT13"
-	TypeAtbash       = "ATBASH"
-	TypeBookCipher   = "BOOK_CIPHER"
-	TypeRSASimple    = "RSA_SIMPLE"
+	TypeXOR           = "XOR"
+	TypeBase64        = "BASE64"
+	TypeMorse         = "MORSE"
+	TypeBinary        = "BINARY"
+	TypeHexadecimal   = "HEXADECIMAL"
+	TypeROT13         = "ROT13"
+	TypeAtbash        = "ATBASH"
+	TypeBookCipher    = "BOOK_CIPHER"
+	TypeRSASimple     = "RSA_SIMPLE"
 	// V2.0 New Ciphers
-	TypeAffine       = "AFFINE"
-	TypeAutokey      = "AUTOKEY"
-	TypeEnigmaLite   = "ENIGMA_LITE"
+	TypeAffine     = "AFFINE"
+	TypeAutokey    = "AUTOKEY"
+	TypeEnigmaLite = "ENIGMA_LITE"
 )
 
 // GetCipher returns a cipher by type

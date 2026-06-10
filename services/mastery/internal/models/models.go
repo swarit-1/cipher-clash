@@ -41,9 +41,9 @@ type CipherMasteryPoints struct {
 }
 
 type MasteryTree struct {
-	CipherType string              `json:"cipher_type"`
+	CipherType string                 `json:"cipher_type"`
 	Tiers      map[int][]*MasteryNode `json:"tiers"`
-	TotalNodes int                 `json:"total_nodes"`
+	TotalNodes int                    `json:"total_nodes"`
 }
 
 type LeaderboardEntry struct {

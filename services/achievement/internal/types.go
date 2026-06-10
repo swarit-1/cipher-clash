@@ -7,25 +7,25 @@ type Achievement struct {
 	ID          string    `json:"id" db:"id"`
 	Name        string    `json:"name" db:"name"`
 	Description string    `json:"description" db:"description"`
-	Icon        string    `json:"icon" db:"icon"` // Icon name or emoji
+	Icon        string    `json:"icon" db:"icon"`     // Icon name or emoji
 	Rarity      string    `json:"rarity" db:"rarity"` // COMMON, RARE, EPIC, LEGENDARY
 	XPReward    int       `json:"xp_reward" db:"xp_reward"`
 	Requirement string    `json:"requirement" db:"requirement"` // JSON for requirement criteria
-	Total       int       `json:"total" db:"total"` // Total count needed (e.g., 100 wins)
+	Total       int       `json:"total" db:"total"`             // Total count needed (e.g., 100 wins)
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // UserAchievement represents a user's progress on an achievement
 type UserAchievement struct {
-	ID            string    `json:"id" db:"id"`
-	UserID        string    `json:"user_id" db:"user_id"`
-	AchievementID string    `json:"achievement_id" db:"achievement_id"`
-	Progress      int       `json:"progress" db:"progress"` // Current count
-	Unlocked      bool      `json:"unlocked" db:"unlocked"`
+	ID            string     `json:"id" db:"id"`
+	UserID        string     `json:"user_id" db:"user_id"`
+	AchievementID string     `json:"achievement_id" db:"achievement_id"`
+	Progress      int        `json:"progress" db:"progress"` // Current count
+	Unlocked      bool       `json:"unlocked" db:"unlocked"`
 	UnlockedAt    *time.Time `json:"unlocked_at,omitempty" db:"unlocked_at"`
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // AchievementWithProgress combines achievement and user progress
@@ -38,15 +38,15 @@ type AchievementWithProgress struct {
 
 // UserAchievementStats represents user's overall achievement statistics
 type UserAchievementStats struct {
-	UserID           string `json:"user_id"`
-	TotalAchievements int    `json:"total_achievements"`
-	UnlockedCount    int    `json:"unlocked_count"`
-	TotalXPEarned    int    `json:"total_xp_earned"`
-	CompletionRate   float64 `json:"completion_rate"` // Percentage
-	LegendaryCount   int    `json:"legendary_count"`
-	EpicCount        int    `json:"epic_count"`
-	RareCount        int    `json:"rare_count"`
-	CommonCount      int    `json:"common_count"`
+	UserID            string  `json:"user_id"`
+	TotalAchievements int     `json:"total_achievements"`
+	UnlockedCount     int     `json:"unlocked_count"`
+	TotalXPEarned     int     `json:"total_xp_earned"`
+	CompletionRate    float64 `json:"completion_rate"` // Percentage
+	LegendaryCount    int     `json:"legendary_count"`
+	EpicCount         int     `json:"epic_count"`
+	RareCount         int     `json:"rare_count"`
+	CommonCount       int     `json:"common_count"`
 }
 
 // CreateAchievementRequest represents request to create achievement

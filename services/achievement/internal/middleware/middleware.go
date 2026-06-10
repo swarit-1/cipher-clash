@@ -76,7 +76,6 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-
 // Helper to get user ID from context
 func GetUserIDFromContext(ctx context.Context) (string, bool) {
 	userID, ok := ctx.Value(UserIDKey).(string)

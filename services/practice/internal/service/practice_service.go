@@ -14,8 +14,8 @@ import (
 )
 
 type PracticeService struct {
-	repo           *repository.PracticeRepository
-	scoringService *ScoringService
+	repo            *repository.PracticeRepository
+	scoringService  *ScoringService
 	puzzleEngineURL string
 	log             *logger.Logger
 }
@@ -27,10 +27,10 @@ func NewPracticeService(
 	log *logger.Logger,
 ) *PracticeService {
 	return &PracticeService{
-		repo:           repo,
-		scoringService: scoringService,
+		repo:            repo,
+		scoringService:  scoringService,
 		puzzleEngineURL: puzzleEngineURL,
-		log:            log,
+		log:             log,
 	}
 }
 
@@ -259,11 +259,11 @@ func (s *PracticeService) SubmitSolution(ctx context.Context, userID string, req
 	}
 
 	s.log.Info("Practice solution submitted", map[string]interface{}{
-		"user_id":     userID,
-		"session_id":  req.SessionID,
-		"is_correct":  isCorrect,
-		"score":       score,
-		"accuracy":    accuracy,
+		"user_id":    userID,
+		"session_id": req.SessionID,
+		"is_correct": isCorrect,
+		"score":      score,
+		"accuracy":   accuracy,
 	})
 
 	return result, nil
@@ -302,13 +302,13 @@ func (s *PracticeService) GetPersonalBests(ctx context.Context, userID string, c
 	var leaderboards []map[string]interface{}
 	for _, record := range records {
 		leaderboards = append(leaderboards, map[string]interface{}{
-			"difficulty":             record.Difficulty,
-			"fastest_solve_ms":       record.FastestSolveMs,
-			"fastest_achieved_at":    record.FastestAchievedAt,
-			"highest_score":          record.HighestScore,
-			"total_sessions":         record.TotalPracticeSessions,
-			"perfect_solves":         record.PerfectSolves,
-			"average_solve_time_ms":  record.AverageSolveTimeMs,
+			"difficulty":            record.Difficulty,
+			"fastest_solve_ms":      record.FastestSolveMs,
+			"fastest_achieved_at":   record.FastestAchievedAt,
+			"highest_score":         record.HighestScore,
+			"total_sessions":        record.TotalPracticeSessions,
+			"perfect_solves":        record.PerfectSolves,
+			"average_solve_time_ms": record.AverageSolveTimeMs,
 		})
 	}
 
@@ -380,8 +380,8 @@ func (s *PracticeService) calculateMasteryXP(difficulty int, solveTimeMs int64, 
 		AccuracyBonus:     accuracyBonus,
 		MasteryMultiplier: masteryMultiplier,
 		TotalXP:           totalXP,
-		NewMasteryXP:      0,    // Would be updated after calling mastery service
-		CurrentLevel:      0,    // Would be fetched from mastery service
+		NewMasteryXP:      0, // Would be updated after calling mastery service
+		CurrentLevel:      0, // Would be fetched from mastery service
 		LevelUp:           false,
 	}
 }

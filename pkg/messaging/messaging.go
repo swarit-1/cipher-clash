@@ -15,11 +15,11 @@ import (
 type EventType string
 
 const (
-	EventMatchCreated     EventType = "match.created"
-	EventMatchCompleted   EventType = "match.completed"
+	EventMatchCreated        EventType = "match.created"
+	EventMatchCompleted      EventType = "match.completed"
 	EventAchievementUnlocked EventType = "achievement.unlocked"
-	EventPlayerJoinedQueue EventType = "queue.player_joined"
-	EventPlayerLeftQueue  EventType = "queue.player_left"
+	EventPlayerJoinedQueue   EventType = "queue.player_joined"
+	EventPlayerLeftQueue     EventType = "queue.player_left"
 )
 
 // Event represents a message event

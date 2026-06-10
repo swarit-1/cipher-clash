@@ -38,8 +38,8 @@ func New(cfg config.DatabaseConfig, log *logger.Logger) (*DB, error) {
 	}
 
 	log.Info("Database connected successfully", map[string]interface{}{
-		"max_open_conns":     cfg.MaxOpenConns,
-		"max_idle_conns":     cfg.MaxIdleConns,
+		"max_open_conns":    cfg.MaxOpenConns,
+		"max_idle_conns":    cfg.MaxIdleConns,
 		"conn_max_lifetime": cfg.ConnMaxLifetime.String(),
 	})
 

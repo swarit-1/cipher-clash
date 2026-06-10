@@ -8,8 +8,8 @@ type TutorialStep struct {
 	StepNumber  int       `json:"step_number" db:"step_number"`
 	Title       string    `json:"title" db:"title"`
 	Description string    `json:"description" db:"description"`
-	Type        string    `json:"type" db:"type"` // INTERACTIVE, VIDEO, TEXT, QUIZ, PRACTICE
-	Content     string    `json:"content" db:"content"` // JSON content based on type
+	Type        string    `json:"type" db:"type"`                         // INTERACTIVE, VIDEO, TEXT, QUIZ, PRACTICE
+	Content     string    `json:"content" db:"content"`                   // JSON content based on type
 	CipherType  *string   `json:"cipher_type,omitempty" db:"cipher_type"` // For cipher-specific tutorials
 	Required    bool      `json:"required" db:"required"`
 	OrderIndex  int       `json:"order_index" db:"order_index"`
@@ -19,15 +19,15 @@ type TutorialStep struct {
 
 // UserProgress represents a user's progress through the tutorial
 type UserProgress struct {
-	ID             string     `json:"id" db:"id"`
-	UserID         string     `json:"user_id" db:"user_id"`
-	StepID         string     `json:"step_id" db:"step_id"`
-	Completed      bool       `json:"completed" db:"completed"`
-	CompletedAt    *time.Time `json:"completed_at,omitempty" db:"completed_at"`
-	TimeSpentSecs  int        `json:"time_spent_secs" db:"time_spent_secs"`
-	Score          *int       `json:"score,omitempty" db:"score"` // For quizzes/practice
-	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at" db:"updated_at"`
+	ID            string     `json:"id" db:"id"`
+	UserID        string     `json:"user_id" db:"user_id"`
+	StepID        string     `json:"step_id" db:"step_id"`
+	Completed     bool       `json:"completed" db:"completed"`
+	CompletedAt   *time.Time `json:"completed_at,omitempty" db:"completed_at"`
+	TimeSpentSecs int        `json:"time_spent_secs" db:"time_spent_secs"`
+	Score         *int       `json:"score,omitempty" db:"score"` // For quizzes/practice
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // TutorialStepWithProgress combines step and user progress
@@ -101,19 +101,19 @@ type CipherExample struct {
 
 // BotBattle represents a practice battle against a bot (first match)
 type BotBattle struct {
-	ID              string     `json:"id" db:"id"`
-	UserID          string     `json:"user_id" db:"user_id"`
-	PuzzleID        string     `json:"puzzle_id" db:"puzzle_id"`
-	CipherType      string     `json:"cipher_type" db:"cipher_type"`
-	Difficulty      int        `json:"difficulty" db:"difficulty"`
-	StartedAt       time.Time  `json:"started_at" db:"started_at"`
-	CompletedAt     *time.Time `json:"completed_at,omitempty" db:"completed_at"`
-	Won             *bool      `json:"won,omitempty" db:"won"`
-	UserSolveTime   *int       `json:"user_solve_time,omitempty" db:"user_solve_time"` // seconds
-	BotSolveTime    int        `json:"bot_solve_time" db:"bot_solve_time"` // seconds
-	Score           *int       `json:"score,omitempty" db:"score"`
-	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at" db:"updated_at"`
+	ID            string     `json:"id" db:"id"`
+	UserID        string     `json:"user_id" db:"user_id"`
+	PuzzleID      string     `json:"puzzle_id" db:"puzzle_id"`
+	CipherType    string     `json:"cipher_type" db:"cipher_type"`
+	Difficulty    int        `json:"difficulty" db:"difficulty"`
+	StartedAt     time.Time  `json:"started_at" db:"started_at"`
+	CompletedAt   *time.Time `json:"completed_at,omitempty" db:"completed_at"`
+	Won           *bool      `json:"won,omitempty" db:"won"`
+	UserSolveTime *int       `json:"user_solve_time,omitempty" db:"user_solve_time"` // seconds
+	BotSolveTime  int        `json:"bot_solve_time" db:"bot_solve_time"`             // seconds
+	Score         *int       `json:"score,omitempty" db:"score"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // StartBotBattleRequest represents a request to start a bot battle

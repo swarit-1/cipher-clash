@@ -19,12 +19,12 @@ type Cache struct {
 
 // TTL constants for common cache types
 const (
-	TTLSession      = 24 * time.Hour  // User sessions
-	TTLActiveGame   = 5 * time.Minute // Active game states
-	TTLLeaderboard  = 1 * time.Minute // Leaderboard data
-	TTLUserProfile  = 15 * time.Minute // User profile data
-	TTLPuzzle       = 1 * time.Hour   // Puzzle data
-	TTLRateLimit    = 1 * time.Minute // Rate limiting
+	TTLSession     = 24 * time.Hour   // User sessions
+	TTLActiveGame  = 5 * time.Minute  // Active game states
+	TTLLeaderboard = 1 * time.Minute  // Leaderboard data
+	TTLUserProfile = 15 * time.Minute // User profile data
+	TTLPuzzle      = 1 * time.Hour    // Puzzle data
+	TTLRateLimit   = 1 * time.Minute  // Rate limiting
 )
 
 // New creates a new Redis cache client

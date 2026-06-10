@@ -19,8 +19,8 @@ const (
 
 // Claims represents JWT claims
 type Claims struct {
-	UserID   string    `json:"user_id"`
-	Username string    `json:"username"`
+	UserID    string    `json:"user_id"`
+	Username  string    `json:"username"`
 	TokenType TokenType `json:"token_type"`
 	jwt.RegisteredClaims
 }

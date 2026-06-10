@@ -41,18 +41,18 @@ const (
 	ErrInvalidInput      = "INVALID_INPUT"
 
 	// Game & Matchmaking
-	ErrMatchNotFound    = "MATCH_NOT_FOUND"
-	ErrPuzzleNotFound   = "PUZZLE_NOT_FOUND"
-	ErrAlreadyInQueue   = "ALREADY_IN_QUEUE"
-	ErrNotInQueue       = "NOT_IN_QUEUE"
-	ErrGameFull         = "GAME_FULL"
-	ErrGameNotStarted   = "GAME_NOT_STARTED"
-	ErrInvalidSolution  = "INVALID_SOLUTION"
+	ErrMatchNotFound   = "MATCH_NOT_FOUND"
+	ErrPuzzleNotFound  = "PUZZLE_NOT_FOUND"
+	ErrAlreadyInQueue  = "ALREADY_IN_QUEUE"
+	ErrNotInQueue      = "NOT_IN_QUEUE"
+	ErrGameFull        = "GAME_FULL"
+	ErrGameNotStarted  = "GAME_NOT_STARTED"
+	ErrInvalidSolution = "INVALID_SOLUTION"
 
 	// System
-	ErrInternalServer  = "INTERNAL_SERVER_ERROR"
-	ErrDatabaseError   = "DATABASE_ERROR"
-	ErrCacheError      = "CACHE_ERROR"
+	ErrInternalServer     = "INTERNAL_SERVER_ERROR"
+	ErrDatabaseError      = "DATABASE_ERROR"
+	ErrCacheError         = "CACHE_ERROR"
 	ErrServiceUnavailable = "SERVICE_UNAVAILABLE"
 	ErrRateLimitExceeded  = "RATE_LIMIT_EXCEEDED"
 )

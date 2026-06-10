@@ -27,12 +27,12 @@ type Logger struct {
 
 // LogEntry represents a structured log entry
 type LogEntry struct {
-	Timestamp   time.Time              `json:"timestamp"`
-	Level       Level                  `json:"level"`
-	Service     string                 `json:"service"`
-	Message     string                 `json:"message"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	CorrelationID string               `json:"correlation_id,omitempty"`
+	Timestamp     time.Time              `json:"timestamp"`
+	Level         Level                  `json:"level"`
+	Service       string                 `json:"service"`
+	Message       string                 `json:"message"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	CorrelationID string                 `json:"correlation_id,omitempty"`
 }
 
 // New creates a new logger instance

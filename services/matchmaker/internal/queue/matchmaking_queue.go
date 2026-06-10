@@ -55,9 +55,9 @@ type Match struct {
 // longest-waiting player sits at the root and is matched first.
 type playerHeap []*QueueEntry
 
-func (h playerHeap) Len() int            { return len(h) }
-func (h playerHeap) Less(i, j int) bool  { return h[i].QueuedAt.Before(h[j].QueuedAt) }
-func (h playerHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i]; h[i].index = i; h[j].index = j }
+func (h playerHeap) Len() int           { return len(h) }
+func (h playerHeap) Less(i, j int) bool { return h[i].QueuedAt.Before(h[j].QueuedAt) }
+func (h playerHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i]; h[i].index = i; h[j].index = j }
 func (h *playerHeap) Push(x interface{}) {
 	entry := x.(*QueueEntry)
 	entry.index = len(*h)
