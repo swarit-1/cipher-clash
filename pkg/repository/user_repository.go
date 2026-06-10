@@ -22,6 +22,7 @@ type User struct {
 	Region          string         `json:"region"`
 	Level           int            `json:"level"`
 	XP              int64          `json:"xp"`
+	Coins           int            `json:"coins"`
 	TotalGames      int            `json:"total_games"`
 	Wins            int            `json:"wins"`
 	Losses          int            `json:"losses"`
@@ -96,7 +97,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*User, err
 	query := `
 		SELECT
 			id, username, email, password_hash, display_name, avatar_url, title, region,
-			level, xp, total_games, wins, losses, win_streak, best_win_streak,
+			level, xp, coins, total_games, wins, losses, win_streak, best_win_streak,
 			elo_rating, rating_deviation, volatility, rank_tier, puzzles_solved,
 			fastest_solve_ms, is_verified, is_banned, created_at, updated_at
 		FROM users
@@ -106,7 +107,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*User, err
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash,
 		&user.DisplayName, &user.AvatarURL, &user.Title, &user.Region,
-		&user.Level, &user.XP, &user.TotalGames, &user.Wins, &user.Losses,
+		&user.Level, &user.XP, &user.Coins, &user.TotalGames, &user.Wins, &user.Losses,
 		&user.WinStreak, &user.BestWinStreak, &user.EloRating,
 		&user.RatingDeviation, &user.Volatility, &user.RankTier,
 		&user.PuzzlesSolved, &user.FastestSolveMS, &user.IsVerified,
@@ -129,7 +130,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*User, 
 	query := `
 		SELECT
 			id, username, email, password_hash, display_name, avatar_url, title, region,
-			level, xp, total_games, wins, losses, win_streak, best_win_streak,
+			level, xp, coins, total_games, wins, losses, win_streak, best_win_streak,
 			elo_rating, rating_deviation, volatility, rank_tier, puzzles_solved,
 			fastest_solve_ms, is_verified, is_banned, created_at, updated_at
 		FROM users
@@ -139,7 +140,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*User, 
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash,
 		&user.DisplayName, &user.AvatarURL, &user.Title, &user.Region,
-		&user.Level, &user.XP, &user.TotalGames, &user.Wins, &user.Losses,
+		&user.Level, &user.XP, &user.Coins, &user.TotalGames, &user.Wins, &user.Losses,
 		&user.WinStreak, &user.BestWinStreak, &user.EloRating,
 		&user.RatingDeviation, &user.Volatility, &user.RankTier,
 		&user.PuzzlesSolved, &user.FastestSolveMS, &user.IsVerified,
@@ -162,7 +163,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	query := `
 		SELECT
 			id, username, email, password_hash, display_name, avatar_url, title, region,
-			level, xp, total_games, wins, losses, win_streak, best_win_streak,
+			level, xp, coins, total_games, wins, losses, win_streak, best_win_streak,
 			elo_rating, rating_deviation, volatility, rank_tier, puzzles_solved,
 			fastest_solve_ms, is_verified, is_banned, created_at, updated_at
 		FROM users
@@ -172,7 +173,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	err := r.db.QueryRowContext(ctx, query, username).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash,
 		&user.DisplayName, &user.AvatarURL, &user.Title, &user.Region,
-		&user.Level, &user.XP, &user.TotalGames, &user.Wins, &user.Losses,
+		&user.Level, &user.XP, &user.Coins, &user.TotalGames, &user.Wins, &user.Losses,
 		&user.WinStreak, &user.BestWinStreak, &user.EloRating,
 		&user.RatingDeviation, &user.Volatility, &user.RankTier,
 		&user.PuzzlesSolved, &user.FastestSolveMS, &user.IsVerified,

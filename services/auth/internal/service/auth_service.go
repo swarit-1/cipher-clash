@@ -60,16 +60,25 @@ type AuthResponse struct {
 
 // UserDTO represents user data transfer object
 type UserDTO struct {
-	ID          string `json:"id"`
-	Username    string `json:"username"`
-	Email       string `json:"email"`
-	DisplayName string `json:"display_name,omitempty"`
-	AvatarURL   string `json:"avatar_url,omitempty"`
-	Level       int    `json:"level"`
-	XP          int64  `json:"xp"`
-	EloRating   int    `json:"elo_rating"`
-	RankTier    string `json:"rank_tier"`
-	Region      string `json:"region"`
+	ID             string `json:"id"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	DisplayName    string `json:"display_name,omitempty"`
+	AvatarURL      string `json:"avatar_url,omitempty"`
+	Title          string `json:"title,omitempty"`
+	Level          int    `json:"level"`
+	XP             int64  `json:"xp"`
+	Coins          int    `json:"coins"`
+	EloRating      int    `json:"elo_rating"`
+	RankTier       string `json:"rank_tier"`
+	Region         string `json:"region"`
+	TotalGames     int    `json:"total_games"`
+	Wins           int    `json:"wins"`
+	Losses         int    `json:"losses"`
+	WinStreak      int    `json:"win_streak"`
+	BestStreak     int    `json:"best_win_streak"`
+	PuzzlesSolved  int    `json:"puzzles_solved"`
+	FastestSolveMS int64  `json:"fastest_solve_ms,omitempty"`
 }
 
 // Register creates a new user account
@@ -328,14 +337,21 @@ func (s *AuthService) validateRegisterRequest(req *RegisterRequest) error {
 
 func (s *AuthService) toUserDTO(user *repository.User) *UserDTO {
 	dto := &UserDTO{
-		ID:        user.ID.String(),
-		Username:  user.Username,
-		Email:     user.Email,
-		Level:     user.Level,
-		XP:        user.XP,
-		EloRating: user.EloRating,
-		RankTier:  user.RankTier,
-		Region:    user.Region,
+		ID:            user.ID.String(),
+		Username:      user.Username,
+		Email:         user.Email,
+		Level:         user.Level,
+		XP:            user.XP,
+		Coins:         user.Coins,
+		EloRating:     user.EloRating,
+		RankTier:      user.RankTier,
+		Region:        user.Region,
+		TotalGames:    user.TotalGames,
+		Wins:          user.Wins,
+		Losses:        user.Losses,
+		WinStreak:     user.WinStreak,
+		BestStreak:    user.BestWinStreak,
+		PuzzlesSolved: user.PuzzlesSolved,
 	}
 
 	if user.DisplayName.Valid {
@@ -343,6 +359,12 @@ func (s *AuthService) toUserDTO(user *repository.User) *UserDTO {
 	}
 	if user.AvatarURL.Valid {
 		dto.AvatarURL = user.AvatarURL.String
+	}
+	if user.Title.Valid {
+		dto.Title = user.Title.String
+	}
+	if user.FastestSolveMS.Valid {
+		dto.FastestSolveMS = int64(user.FastestSolveMS.Int32)
 	}
 
 	return dto

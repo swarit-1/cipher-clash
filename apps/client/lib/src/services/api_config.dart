@@ -1,19 +1,24 @@
+import '../core/env.dart';
+
+/// Backwards-compatible facade over [Env]. New code should use [Env]
+/// directly; these constants exist for the original service classes.
 class ApiConfig {
-  // Base URLs for each microservice (HTTP/REST)
-  static const String authBaseUrl = 'http://localhost:8085/api/v1';
-  static const String matchmakerBaseUrl = 'http://localhost:8086/api/v1';
-  static const String puzzleBaseUrl = 'http://localhost:8087/api/v1';
-  static const String achievementBaseUrl = 'http://localhost:8083/api/v1';
-  static const String gameBaseUrl = 'http://localhost:8088/api/v1';
-  static const String tutorialBaseUrl = 'http://localhost:8089/api/v1';
-  static const String practiceBaseUrl = 'http://localhost:8090/api/v1';
-  static const String masteryBaseUrl = 'http://localhost:8091/api/v1';
-  static const String profileBaseUrl = 'http://localhost:8092/api/v1';
+  ApiConfig._();
 
-  // WebSocket URLs
-  static const String gameWebSocketUrl = 'ws://localhost:8088/ws';
+  static const String authBaseUrl = Env.authUrl;
+  static const String matchmakerBaseUrl = Env.matchmakerUrl;
+  static const String puzzleBaseUrl = Env.puzzleUrl;
+  static const String achievementBaseUrl = Env.achievementUrl;
+  static const String gameBaseUrl = Env.gameUrl;
+  static const String tutorialBaseUrl = Env.tutorialUrl;
+  static const String practiceBaseUrl = Env.practiceUrl;
+  static const String masteryBaseUrl = Env.masteryUrl;
+  static const String missionsBaseUrl = Env.missionsUrl;
+  static const String socialBaseUrl = Env.socialUrl;
+  static const String cosmeticsBaseUrl = Env.cosmeticsUrl;
 
-  // Timeouts
+  static const String gameWebSocketUrl = Env.gameWsUrl;
+
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 10);
 }

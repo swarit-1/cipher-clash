@@ -67,17 +67,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _skipForDev() {
-    HapticFeedback.heavyImpact();
-    // Set mock auth data for dev mode
-    AuthService.setDevMockAuth(
-      accessToken: 'dev-mock-token',
-      userId: 'dev-user-123',
-      username: 'DevUser',
-    );
-    Navigator.pushReplacementNamed(context, '/menu');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -119,11 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Divider
                   _buildDivider(),
-
-                  const SizedBox(height: AppTheme.spacing4),
-
-                  // Dev Skip Button
-                  _buildDevSkipButton(),
 
                   const SizedBox(height: AppTheme.spacing3),
 
@@ -335,20 +319,6 @@ class _LoginScreenState extends State<LoginScreen> {
         const Expanded(child: Divider()),
       ],
     ).animate().fadeIn(delay: 1000.ms);
-  }
-
-  Widget _buildDevSkipButton() {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 400),
-      child: CyberpunkButton(
-        label: 'SKIP FOR DEV',
-        onPressed: _isLoading ? null : _skipForDev,
-        variant: CyberpunkButtonVariant.secondary,
-        icon: Icons.fast_forward,
-        fullWidth: true,
-        padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing2),
-      ),
-    ).animate().fadeIn(delay: 1050.ms).slideY(begin: 0.2, end: 0);
   }
 
   Widget _buildRegisterLink() {

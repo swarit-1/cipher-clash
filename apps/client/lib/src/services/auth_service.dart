@@ -1,142 +1,111 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'api_config.dart';
+import '../core/api_client.dart';
+import '../core/env.dart';
+import '../core/token_store.dart';
 
+/// Authentication + session facade. Tokens persist across reloads via
+/// [TokenStore]; requests flow through [Api.client], which transparently
+/// refreshes expired access tokens.
 class AuthService {
-  static String? _accessToken;
-  static String? _refreshToken;
-  static String? _userId;
-  static String? _username;
+  AuthService._();
 
-  // Getters
-  static String? get accessToken => _accessToken;
-  static String? get userId => _userId;
-  static String? get username => _username;
-  static bool get isAuthenticated => _accessToken != null;
+  /// The most recently fetched profile (richer than the token payload).
+  static Map<String, dynamic>? currentUser;
 
-  // Register new user
+  static String? get accessToken => TokenStore.accessToken;
+  static String? get userId => TokenStore.userId;
+  static String? get username => TokenStore.username;
+  static bool get isAuthenticated => TokenStore.accessToken != null;
+
+  /// Restores a persisted session and validates it by fetching the
+  /// profile. Returns true when the user is signed in.
+  static Future<bool> restore() async {
+    await TokenStore.init();
+    if (TokenStore.accessToken == null) return false;
+    final profile = await fetchProfile();
+    return profile != null;
+  }
+
   static Future<Map<String, dynamic>> register({
     required String username,
     required String email,
     required String password,
+    String region = 'US',
   }) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('${ApiConfig.authBaseUrl}/auth/register'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'username': username,
-              'email': email,
-              'password': password,
-            }),
-          )
-          .timeout(ApiConfig.connectTimeout);
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        _accessToken = data['access_token'];
-        _refreshToken = data['refresh_token'];
-        _userId = data['user_id'];
-        _username = username;
-        return {'success': true, 'message': 'Registration successful'};
-      } else {
-        return {
-          'success': false,
-          'message': data['error'] ?? 'Registration failed'
-        };
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
+    final response = await Api.client.post(
+      '${Env.authUrl}/auth/register',
+      auth: false,
+      body: {
+        'username': username,
+        'email': email,
+        'password': password,
+        'region': region,
+      },
+    );
+    return _handleAuthResponse(response, fallbackUsername: username);
   }
 
-  // Login existing user
   static Future<Map<String, dynamic>> login({
     required String username,
     required String password,
   }) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('${ApiConfig.authBaseUrl}/auth/login'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'username': username,
-              'password': password,
-            }),
-          )
-          .timeout(ApiConfig.connectTimeout);
+    final response = await Api.client.post(
+      '${Env.authUrl}/auth/login',
+      auth: false,
+      body: {'username': username, 'password': password},
+    );
+    return _handleAuthResponse(response, fallbackUsername: username);
+  }
 
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
-        _accessToken = data['access_token'];
-        _refreshToken = data['refresh_token'];
-        _userId = data['user_id'];
-        _username = username;
-        return {'success': true, 'message': 'Login successful'};
-      } else {
-        return {'success': false, 'message': data['error'] ?? 'Login failed'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+  static Future<Map<String, dynamic>> _handleAuthResponse(
+    ApiResponse response, {
+    required String fallbackUsername,
+  }) async {
+    if (!response.ok || response.json is! Map) {
+      return {'success': false, 'message': response.errorMessage};
     }
+    final data = (response.json as Map).cast<String, dynamic>();
+    final user = (data['user'] as Map?)?.cast<String, dynamic>();
+    final access = data['access_token'] as String?;
+    final refresh = data['refresh_token'] as String?;
+    if (access == null || refresh == null) {
+      return {'success': false, 'message': 'Malformed auth response'};
+    }
+
+    await TokenStore.save(
+      accessToken: access,
+      refreshToken: refresh,
+      userId: user?['id'] as String? ?? '',
+      username: user?['username'] as String? ?? fallbackUsername,
+    );
+    currentUser = user;
+    return {'success': true, 'message': 'OK'};
   }
 
-  // Logout
-  static void logout() {
-    _accessToken = null;
-    _refreshToken = null;
-    _userId = null;
-    _username = null;
+  /// Fetches (and caches) the authenticated user's profile.
+  static Future<Map<String, dynamic>?> fetchProfile() async {
+    final response = await Api.client.get('${Env.authUrl}/auth/profile');
+    if (response.ok && response.json is Map) {
+      currentUser = (response.json as Map).cast<String, dynamic>();
+      return currentUser;
+    }
+    if (response.status == 401) {
+      await logout();
+    }
+    return null;
   }
 
-  // Set mock auth data for development (bypasses backend)
-  static void setDevMockAuth({
-    required String accessToken,
-    required String userId,
-    required String username,
-  }) {
-    _accessToken = accessToken;
-    _refreshToken = 'dev-mock-refresh-token';
-    _userId = userId;
-    _username = username;
+  static Future<void> logout() async {
+    currentUser = null;
+    await TokenStore.clear();
   }
 
-  // Get authorization header
+  /// Authorization headers for code paths that still build requests
+  /// manually.
   static Map<String, String> getAuthHeaders() {
-    if (_accessToken == null) {
-      return {'Content-Type': 'application/json'};
-    }
+    final token = TokenStore.accessToken;
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $_accessToken',
+      if (token != null) 'Authorization': 'Bearer $token',
     };
-  }
-
-  // Refresh token (if needed)
-  static Future<bool> refreshAccessToken() async {
-    if (_refreshToken == null) return false;
-
-    try {
-      final response = await http
-          .post(
-            Uri.parse('${ApiConfig.authBaseUrl}/auth/refresh'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'refresh_token': _refreshToken}),
-          )
-          .timeout(ApiConfig.connectTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _accessToken = data['access_token'];
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
   }
 }
