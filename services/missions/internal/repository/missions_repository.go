@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/swarit-1/cipher-clash/services/missions/internal/models"
 )
@@ -30,12 +31,12 @@ func (r *missionsRepository) GetAllTemplates(ctx context.Context, category, freq
 	args := []interface{}{}
 
 	if category != "" {
-		query += " AND category = $" + string(rune(len(args)+1))
+		query += fmt.Sprintf(" AND category = $%d", len(args)+1)
 		args = append(args, category)
 	}
 
 	if frequency != "" {
-		query += " AND frequency = $" + string(rune(len(args)+1))
+		query += fmt.Sprintf(" AND frequency = $%d", len(args)+1)
 		args = append(args, frequency)
 	}
 

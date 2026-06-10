@@ -44,8 +44,9 @@ class AppRoutes {
       register: (context) => const RegisterScreen(),
       menu: (context) => const MainMenuScreen(),
       matchmaking: (context) => const MatchmakingScreen(),
-      queue: (context) => const QueueScreen(),
-      matchSummary: (context) => const MatchSummaryScreen(),
+      // NOTE: /queue, /game, /match-summary, and /replay take arguments and
+      // are handled exclusively by onGenerateRoute — the static map would
+      // swallow their arguments.
       profile: (context) => const ProfileScreen(),
       leaderboard: (context) => const LeaderboardScreen(),
       achievements: (context) => const AchievementsScreen(),
