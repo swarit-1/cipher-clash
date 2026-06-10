@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/swarit-1/cipher-clash/pkg/auth"
@@ -44,8 +45,10 @@ type RegisterRequest struct {
 	Region   string `json:"region"`
 }
 
-// LoginRequest represents login input
+// LoginRequest represents login input. Players may sign in with either
+// their username or their email.
 type LoginRequest struct {
+	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -151,8 +154,16 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 
 // Login authenticates a user
 func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error) {
+	identifier := req.Username
+	if identifier == "" {
+		identifier = req.Email
+	}
+	if identifier == "" || req.Password == "" {
+		return nil, errors.NewInvalidCredentialsError()
+	}
+
 	// Rate limiting
-	rateLimitKey := fmt.Sprintf("login:%s", req.Email)
+	rateLimitKey := fmt.Sprintf("login:%s", identifier)
 	allowed, err := s.cache.RateLimitCheck(ctx, rateLimitKey, 5, cache.TTLRateLimit)
 	if err != nil {
 		s.log.Error("Rate limit check failed", map[string]interface{}{"error": err.Error()})
@@ -161,8 +172,13 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthRespon
 		return nil, errors.NewRateLimitError()
 	}
 
-	// Find user by email
-	user, err := s.userRepo.FindByEmail(ctx, req.Email)
+	// Find user by username or email (emails always contain '@').
+	var user *repository.User
+	if strings.Contains(identifier, "@") {
+		user, err = s.userRepo.FindByEmail(ctx, identifier)
+	} else {
+		user, err = s.userRepo.FindByUsername(ctx, identifier)
+	}
 	if err != nil {
 		return nil, errors.NewInvalidCredentialsError()
 	}
