@@ -1,5 +1,13 @@
 # Cipher Clash — Full Codebase Audit
 
+> **Status: remediation complete.** This document is the *baseline* audit
+> the production-hardening effort started from; every Partial/Stubbed/
+> Broken/Dead item below has since been fixed or removed (see the commit
+> history from `78ff352` onward). It is kept as an honest record of the
+> before-state. Current verification: 24/24 API smoke checks, Go `-race`
+> suites, an 18-cipher round-trip suite, and Playwright browser E2E against
+> both the live stack and the zero-backend demo build.
+
 **Date:** 2026-06-09 · **Auditor:** automated function-by-function review of every service and the Flutter client.
 **Classification scale:** `Working` (does what it claims, end to end) · `Partial` (real implementation with gaps) · `Stubbed` (placeholder/mock pretending to work) · `Broken` (incorrect behavior/bug) · `Dead` (unreachable or unused code).
 
